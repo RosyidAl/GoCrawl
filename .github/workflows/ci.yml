@@ -118,7 +118,7 @@ jobs:
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
-      - name: Test koneksi
+      - name: Verify Tailscale Connection
         run: |
           tailscale status
           nc -zv ${{ secrets.VPS_HOST }} ${{ secrets.VPS_PORT || 22 }} -w 10
@@ -136,7 +136,7 @@ jobs:
           trap 'rm -f "$ssh_key"' EXIT
           printf '%s\n' "$VPS_SSH_KEY" > "$ssh_key"
           chmod 600 "$ssh_key"
-          timeout 120s ssh -vv \
+          timeout 120s ssh \
             -i "$ssh_key" \
             -p "$VPS_PORT" \
             -o BatchMode=yes \
@@ -149,14 +149,34 @@ jobs:
           set -euo pipefail
           echo "SSH remote script started"
           export PATH="/usr/local/nvm/versions/node/v24.14.0/bin:$PATH"
-          cd /var/www/gocrawl
+
+          DEPLOY_DIR="$HOME/projects/gocrawl"
+          mkdir -p "$HOME/projects"
+
+          if [ ! -d "$DEPLOY_DIR" ] && [ -d "/var/www/gocrawl" ]; then
+            echo "Migrating /var/www/gocrawl to $DEPLOY_DIR..."
+            mv /var/www/gocrawl "$DEPLOY_DIR"
+          elif [ ! -d "$DEPLOY_DIR" ]; then
+            echo "Cloning repository to $DEPLOY_DIR..."
+            git clone https://github.com/RosyidAl/GoCrawl.git "$DEPLOY_DIR"
+          fi
+
+          cd "$DEPLOY_DIR"
           echo "Pulling latest main..."
           GIT_TERMINAL_PROMPT=0 git pull --ff-only origin main
+
           if [ -f "./build.sh" ]; then
             chmod +x build.sh
             ./build.sh
           fi
+
           echo "Restarting GoCrawl web..."
-          pm2 restart gocrawl-web || pm2 start web/server.mjs --name "gocrawl-web"
+          if pm2 describe gocrawl-web > /dev/null 2>&1; then
+            pm2 restart gocrawl-web --update-env
+          else
+            pm2 start web/server.mjs --name "gocrawl-web"
+          fi
+          pm2 save
+
           echo "Deployment to VPS completed successfully via Tailscale!"
           REMOTE_SCRIPT
