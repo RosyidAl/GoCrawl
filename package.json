@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node web/server.mjs",
     "serve": "node web/server.mjs",
-    "dev": "node web/server.mjs"
+    "dev": "node web/server.mjs",
+    "test": "node --check web/server.mjs && node --check web/public/app.js"
   },
   "keywords": [
     "ojs",

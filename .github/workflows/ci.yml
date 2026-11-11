@@ -1,0 +1,100 @@
+name: GoCrawl CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "master", "main" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "master", "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  # -----------------------------------------------------------
+  # 1. BUILD & TEST JAVA CRAWLER ENGINE
+  # -----------------------------------------------------------
+  build-java:
+    name: Build & Test Java Engine
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Compile Java Code & Package Executable JAR
+        run: |
+          mkdir -p target/classes
+          javac -encoding UTF-8 -cp "lib/jsoup-1.18.3.jar" -d target/classes $(find src/main/java -name "*.java")
+          cd target/classes
+          jar -xf ../../lib/jsoup-1.18.3.jar
+          cd ../..
+          jar --create --file gocrawl.jar --main-class id.gocrawl.Main -C target/classes .
+
+      - name: Smoke Test Executable JAR
+        run: |
+          java -jar gocrawl.jar --help
+
+      - name: Upload JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gocrawl-executable-jar
+          path: gocrawl.jar
+          retention-days: 14
+
+  # -----------------------------------------------------------
+  # 2. VALIDATE NODE.JS WEB DASHBOARD
+  # -----------------------------------------------------------
+  test-web:
+    name: Validate Web Dashboard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify JavaScript Syntax
+        run: |
+          node --check web/server.mjs
+          node --check web/public/app.js
+
+      - name: Verify Static Frontend Assets
+        run: |
+          test -f web/public/index.html
+          test -f web/public/styles.css
+          test -f web/public/app.js
+
+  # -----------------------------------------------------------
+  # 3. AUTOMATIC GITHUB RELEASE (Triggered on git tag v*)
+  # -----------------------------------------------------------
+  release:
+    name: Create GitHub Release
+    needs: [build-java, test-web]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Download Built JAR
+        uses: actions/download-artifact@v4
+        with:
+          name: gocrawl-executable-jar
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: gocrawl.jar
+          generate_release_notes: true
