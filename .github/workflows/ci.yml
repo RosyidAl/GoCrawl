@@ -114,6 +114,11 @@ jobs:
         with:
           authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
 
+      - name: Test koneksi
+        run: |
+          tailscale status
+          nc -zv ${{ secrets.VPS_HOST }} ${{ secrets.VPS_PORT || 22 }} -w 10
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
