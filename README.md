@@ -75,3 +75,58 @@ Akses aplikasi pada peramban web:
 - **Ekspor 1-Klik:** Unduh seluruh kumpulan data terpadu dalam format CSV atau JSON.
 - **Bebas Emoticon & Ikon Vektor Orisinal:** Seluruh elemen visual dirancang menggunakan ikon SVG vektor murni berpresisi tinggi.
 - **Desain Reflow Seluler:** Kompatibel dengan layar smartphone (bilah navigasi bawah, target sentuh >= 44px, dan tampilan kartu responsif).
+
+---
+
+## 4. CI/CD & Otomasi Deployment (GitHub Actions)
+
+Repositori ini telah dilengkapi dengan pipeline CI/CD otomatis menggunakan GitHub Actions ([`.github/workflows/ci.yml`](file:///.github/workflows/ci.yml)):
+
+```
+[ Push to main / Git Tag v* ]
+              │
+     ┌────────┴───────────────────┐
+     ▼                            ▼
+[ Build Java (JDK 21) ]    [ Test Web (Node 22) ]
+     │                            │
+     └────────┬───────────────────┘
+              ▼
+[ Deploy ke VPS via Tailscale ]  (Otomatis saat push ke branch main)
+[ Publikasi GitHub Release ]     (Otomatis saat push tag v*)
+```
+
+### Tahapan Pipeline:
+1. **Build & Smoke Test Java Engine:**
+   - Kompilasi source code menggunakan JDK 21 LTS dan Jsoup.
+   - Packaging executable standalone JAR (`gocrawl.jar`).
+   - Verifikasi *smoke test* (`java -jar gocrawl.jar --help`).
+   - Unggah artifact JAR (retensi 14 hari).
+
+2. **Validasi Web Dashboard:**
+   - Pengecekan sintaks JavaScript Node.js (`server.mjs`, `public/app.js`).
+   - Verifikasi integritas file frontend (`index.html`, `styles.css`).
+
+3. **Deploy Aman ke VPS (Tailscale & OpenSSH):**
+   - Runner terhubung ke jaringan VPN privat Tailscale secara dinamis.
+   - Login ke VPS menggunakan autentikasi OpenSSH key.
+   - Pembaruan kode otomatis di direktori target `~/projects/gocrawl` (`git pull --ff-only`).
+   - Auto-restart layanan web dashboard menggunakan PM2 (`gocrawl-web`).
+
+4. **Publikasi Rilis Otomatis (GitHub Release):**
+   - Membuat rilis resmi baru di tab Releases GitHub dengan lampiran file `gocrawl.jar` siap pakai dan changelog otomatis.
+
+### Cara Membuat Rilis Baru:
+Untuk menerbitkan versi rilis baru ke tab [GitHub Releases](https://github.com/RosyidAl/GoCrawl/releases):
+```powershell
+git tag -a v1.0.0 -m "Release GoCrawl versi 1.0.0"
+git push origin v1.0.0
+```
+
+### Secrets GitHub Actions yang Dikonfigurasi:
+Konfigurasi pada menu **Settings** &rarr; **Secrets and variables** &rarr; **Actions**:
+- `TAILSCALE_AUTHKEY`: Auth key Tailscale untuk menghubungkan runner CI ke Tailnet privat.
+- `VPS_HOST`: IP Tailscale dari server VPS (contoh: `100.x.y.z`).
+- `VPS_USER`: Username SSH pada VPS (misal: `root` atau user sudo lainnya).
+- `VPS_PORT`: Port OpenSSH VPS (default: `22`).
+- `VPS_SSH_KEY`: OpenSSH Private Key yang telah didaftarkan pada `~/.ssh/authorized_keys` di VPS.
+
