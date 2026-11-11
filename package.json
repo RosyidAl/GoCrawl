@@ -1,0 +1,21 @@
+{
+  "name": "gocrawl-web",
+  "version": "1.0.0",
+  "description": "Antarmuka Web Dashboard Modern untuk Crawler Metadata Jurnal OJS GoCrawl",
+  "main": "web/server.mjs",
+  "type": "module",
+  "scripts": {
+    "start": "node web/server.mjs",
+    "serve": "node web/server.mjs",
+    "dev": "node web/server.mjs"
+  },
+  "keywords": [
+    "ojs",
+    "crawler",
+    "academic",
+    "dashboard",
+    "metadata"
+  ],
+  "author": "GoCrawl Team",
+  "license": "MIT"
+}

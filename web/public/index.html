@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GoCrawl — OJS Academic Harvester</title>
+  <meta name="description" content="Dashboard antarmuka kontrol dan eksplorasi data hasil perayapan metadata jurnal ilmiah OJS berbasis Java 21.">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Mobile Top Bar (<768px) -->
+  <header class="mobile-topbar">
+    <button type="button" class="btn-icon" id="btn-toggle-sidebar" aria-label="Buka Menu Navigasi">
+      <span class="icon-slot" data-icon="menu"></span>
+    </button>
+    <div class="mobile-brand">
+      <div class="brand-logo" id="mobile-logo"></div>
+      <span class="mobile-brand-title">GoCrawl</span>
+    </div>
+    <div class="mobile-status-dot idle" id="mobile-status-dot" title="Status Mesin"></div>
+  </header>
+
+  <!-- Backdrop overlay for mobile drawer -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <div class="app-shell">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <!-- Sidebar Header / Brand -->
+      <div class="sidebar-brand">
+        <div class="brand-logo" id="sidebar-logo"></div>
+        <div class="brand-text">
+          <h1 class="brand-title">GoCrawl</h1>
+          <span class="brand-subtitle">Academic Harvester</span>
+        </div>
+        <button type="button" class="btn-icon-sm sidebar-close-btn" id="btn-close-sidebar" aria-label="Tutup Menu">
+          <span class="icon-slot" data-icon="x"></span>
+        </button>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="sidebar-nav" aria-label="Navigasi Utama">
+        <button type="button" class="nav-item active" data-view="view-crawl">
+          <span class="nav-item-icon" data-icon="play"></span>
+          <span class="nav-item-text">Mulai Crawling</span>
+        </button>
+
+        <button type="button" class="nav-item" data-view="view-monitor">
+          <span class="nav-item-icon" data-icon="terminal"></span>
+          <span class="nav-item-text">Live Monitor</span>
+          <span class="nav-pill-dot" id="monitor-pill-dot"></span>
+        </button>
+
+        <button type="button" class="nav-item" data-view="view-articles">
+          <span class="nav-item-icon" data-icon="database"></span>
+          <span class="nav-item-text">Data Artikel</span>
+          <span class="nav-badge" id="nav-count-articles">0</span>
+        </button>
+
+        <button type="button" class="nav-item" data-view="view-journals">
+          <span class="nav-item-icon" data-icon="book-open"></span>
+          <span class="nav-item-text">Target Jurnal</span>
+          <span class="nav-badge" id="nav-count-journals">0</span>
+        </button>
+
+        <button type="button" class="nav-item" data-view="view-stats">
+          <span class="nav-item-icon" data-icon="shield-check"></span>
+          <span class="nav-item-text">Statistik & Sistem</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer">
+        <div class="engine-status-box" id="sidebar-status-box">
+          <span class="status-indicator-dot idle" id="sidebar-status-dot"></span>
+          <div class="status-text-wrap">
+            <span class="status-state-label" id="sidebar-status-text">Siap</span>
+            <span class="status-runtime-sub" id="sidebar-runtime-sub">Java 21 LTS</span>
+          </div>
+        </div>
+
+        <button type="button" class="btn-theme-toggle" id="theme-toggle" aria-label="Ganti Tema">
+          <span class="icon-slot" id="theme-icon-slot"></span>
+          <span class="theme-label" id="theme-label">Mode Gelap</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN VIEW AREA (Single Purpose per Page) -->
+    <main class="app-content">
+
+      <!-- ====================================================================
+           VIEW 1: MULAI CRAWLING (Only Purpose: Launch Crawl Job)
+           ==================================================================== -->
+      <section class="page-view active" id="view-crawl">
+        <div class="page-header">
+          <h2 class="page-title">Mulai Perayapan Baru</h2>
+          <p class="page-subtitle">Tentukan kata kunci dan parameter untuk mengekstrak metadata dari seluruh arsip jurnal OJS terdaftar.</p>
+        </div>
+
+        <div class="view-content-center">
+          <div class="card form-card-focused">
+            <form id="crawl-form" class="form-body">
+              <div class="form-group">
+                <label for="keyword-input" class="form-label">
+                  Kata Kunci Pencarian
+                  <span class="required-mark">*</span>
+                </label>
+                <div class="input-with-icon">
+                  <span class="input-icon-left" data-icon="search"></span>
+                  <input 
+                    type="text" 
+                    id="keyword-input" 
+                    name="keyword" 
+                    class="form-control" 
+                    placeholder="Contoh: islamisasi, islamization, dakwah..." 
+                    required
+                    autocomplete="off"
+                  >
+                </div>
+                <p class="form-hint">Mendukung multi-kata kunci / multibahasa dengan pemisah koma (,) atau operator OR.</p>
+              </div>
+
+              <!-- Preset Kata Kunci -->
+              <div class="preset-group">
+                <span class="preset-label">Preset Topik Cepat:</span>
+                <div class="preset-tags">
+                  <button type="button" class="preset-tag" data-preset="islamisasi, islamization">Islamisasi / Islamization</button>
+                  <button type="button" class="preset-tag" data-preset="pendidikan islam">Pendidikan Islam</button>
+                  <button type="button" class="preset-tag" data-preset="hukum ekonomi syariah">Hukum Ekonomi Syariah</button>
+                  <button type="button" class="preset-tag" data-preset="moderasi beragama">Moderasi Beragama</button>
+                  <button type="button" class="preset-tag" data-preset="islam nusantara">Islam Nusantara</button>
+                </div>
+              </div>
+
+              <div class="form-row-two">
+                <div class="form-group">
+                  <label for="from-year" class="form-label">Dari Tahun (Opsional)</label>
+                  <div class="input-with-icon">
+                    <span class="input-icon-left" data-icon="calendar"></span>
+                    <input type="number" id="from-year" name="fromYear" class="form-control" placeholder="2020" min="1990" max="2030">
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="to-year" class="form-label">Sampai Tahun (Opsional)</label>
+                  <div class="input-with-icon">
+                    <span class="input-icon-left" data-icon="calendar"></span>
+                    <input type="number" id="to-year" name="toYear" class="form-control" placeholder="2026" min="1990" max="2030">
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Sasaran Jurnal Terdaftar</label>
+                <div class="target-summary-box" id="active-targets-summary">
+                  Memuat daftar jurnal sasaran...
+                </div>
+              </div>
+
+              <div class="form-actions-stack">
+                <button type="submit" class="btn btn-primary btn-lg" id="btn-start-crawl">
+                  <span class="btn-icon-slot" data-icon="play"></span>
+                  <span>Jalankan Perayap Sekarang</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 2: LIVE MONITOR (Only Purpose: Stream Logs & Crawl Progress)
+           ==================================================================== -->
+      <section class="page-view" id="view-monitor">
+        <div class="page-header header-with-actions">
+          <div>
+            <h2 class="page-title">Live Monitor & Konsol</h2>
+            <p class="page-subtitle">Pantau alur eksekusi proses Java crawler, penjelajahan halaman, dan deteksi kecocokan secara real-time.</p>
+          </div>
+          <div class="header-action-buttons">
+            <button type="button" class="btn btn-danger btn-sm" id="btn-stop-crawl" disabled>
+              <span data-icon="stop"></span>
+              <span>Hentikan Proses</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="monitor-wrapper">
+          <!-- Monitor Stats Strip -->
+          <div class="monitor-kpi-bar">
+            <div class="monitor-stat-item">
+              <span class="m-stat-label">Status Mesin</span>
+              <span class="m-stat-val" id="monitor-status-text">Siap</span>
+            </div>
+            <div class="monitor-stat-item">
+              <span class="m-stat-label">Jurnal Aktif</span>
+              <span class="m-stat-val" id="monitor-journal-text">—</span>
+            </div>
+            <div class="monitor-stat-item">
+              <span class="m-stat-label">Halaman Diperiksa</span>
+              <span class="m-stat-val" id="monitor-pages-text">0</span>
+            </div>
+            <div class="monitor-stat-item">
+              <span class="m-stat-label">Artikel Cocok</span>
+              <span class="m-stat-val text-accent" id="monitor-matches-text">0</span>
+            </div>
+          </div>
+
+          <!-- Progress Bar Line -->
+          <div class="progress-track">
+            <div class="progress-bar-indeterminate" id="crawl-progress-bar"></div>
+          </div>
+
+          <!-- Console Header Controls -->
+          <div class="console-toolbar">
+            <div class="console-filter-pills">
+              <button type="button" class="filter-pill active" data-filter="all">Semua Log</button>
+              <button type="button" class="filter-pill" data-filter="match">Kecocokan</button>
+              <button type="button" class="filter-pill" data-filter="progress">Progres</button>
+              <button type="button" class="filter-pill" data-filter="error">Peringatan/Error</button>
+            </div>
+            <div class="console-tools">
+              <button type="button" class="btn-icon-sm" id="btn-clear-console" title="Bersihkan Layar">
+                <span data-icon="trash"></span>
+              </button>
+              <button type="button" class="btn-icon-sm" id="btn-copy-console" title="Salin Seluruh Log">
+                <span data-icon="copy"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Terminal Output -->
+          <div class="console-screen" id="console-screen" tabindex="0" role="region" aria-label="Terminal Log Output">
+            <div class="console-empty-placeholder" id="console-empty">
+              <span class="console-empty-icon" data-icon="terminal"></span>
+              <p>Belum ada proses perayapan aktif.</p>
+              <span class="text-muted">Jalankan perayapan pada menu Mulai Crawling untuk melihat streaming log di sini.</span>
+            </div>
+            <div class="console-lines" id="console-lines"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 3: DATA ARTIKEL (Only Purpose: Browse & Export Articles)
+           ==================================================================== -->
+      <section class="page-view" id="view-articles">
+        <div class="page-header header-with-actions">
+          <div>
+            <h2 class="page-title">Eksplorasi Data Artikel</h2>
+            <p class="page-subtitle">Daftar lengkap artikel ilmiah hasil penarikan metadata OJS yang lolos seleksi deduplikasi.</p>
+          </div>
+          <div class="header-action-buttons">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-csv" title="Unduh CSV">
+              <span data-icon="download"></span>
+              <span>Ekspor CSV</span>
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-json" title="Unduh JSON">
+              <span data-icon="download"></span>
+              <span>Ekspor JSON</span>
+            </button>
+            <button type="button" class="btn btn-icon-sm" id="btn-refresh-articles" title="Muat Ulang Data">
+              <span data-icon="refresh"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="card article-browser-card">
+          <!-- Filter Toolbar -->
+          <div class="articles-filter-box">
+            <div class="search-input-wrapper">
+              <span class="search-icon" data-icon="search"></span>
+              <input 
+                type="text" 
+                id="article-search-input" 
+                class="search-input" 
+                placeholder="Cari judul, penulis, abstrak, atau DOI..." 
+                autocomplete="off"
+              >
+              <button type="button" class="btn-clear-search" id="btn-clear-article-search" style="display:none;" title="Hapus">
+                <span data-icon="x"></span>
+              </button>
+            </div>
+
+            <div class="filter-controls-row">
+              <div class="filter-field">
+                <label for="filter-journal" class="filter-label">Jurnal:</label>
+                <select id="filter-journal" class="select-control">
+                  <option value="">Semua Jurnal</option>
+                </select>
+              </div>
+
+              <div class="filter-field">
+                <label for="filter-year" class="filter-label">Tahun:</label>
+                <select id="filter-year" class="select-control">
+                  <option value="">Semua Tahun</option>
+                </select>
+              </div>
+
+              <div class="filter-field">
+                <label for="filter-sort" class="filter-label">Urutan:</label>
+                <select id="filter-sort" class="select-control">
+                  <option value="year_desc">Tahun Terbaru</option>
+                  <option value="year_asc">Tahun Terlama</option>
+                  <option value="title_asc">Judul (A-Z)</option>
+                </select>
+              </div>
+
+              <label class="checkbox-inline">
+                <input type="checkbox" id="filter-has-doi">
+                <span>Hanya Ber-DOI</span>
+              </label>
+
+              <div class="filter-stats-inline">
+                Total: <strong id="articles-result-count">0</strong> artikel
+              </div>
+            </div>
+          </div>
+
+          <!-- Table Container (Desktop / Tablet) -->
+          <div class="table-responsive-container">
+            <table class="articles-table">
+              <thead>
+                <tr>
+                  <th scope="col" style="width: 70px;">Tahun</th>
+                  <th scope="col">Judul & Penulis</th>
+                  <th scope="col" style="width: 220px;">Jurnal</th>
+                  <th scope="col" style="width: 140px;">DOI</th>
+                  <th scope="col" style="width: 90px; text-align: center;">Detail</th>
+                </tr>
+              </thead>
+              <tbody id="articles-tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Cards Container (Mobile Phone) -->
+          <div class="articles-cards-container" id="articles-cards"></div>
+
+          <!-- Empty State -->
+          <div class="empty-state" id="articles-empty" style="display:none;">
+            <div class="empty-icon-wrap" data-icon="search"></div>
+            <h3 class="empty-title">Tidak Ada Artikel Ditemukan</h3>
+            <p class="empty-desc">Coba sesuaikan kata kunci filter pencarian atau jalankan perayapan baru.</p>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination-bar">
+            <div class="pagination-info">
+              Halaman <span id="pag-current">1</span> dari <span id="pag-total">1</span>
+            </div>
+            <div class="pagination-buttons">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-pag-prev" disabled>
+                <span data-icon="chevron-left"></span>
+                <span>Sebelumnya</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-pag-next" disabled>
+                <span>Berikutnya</span>
+                <span data-icon="chevron-right"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 4: KELOLA JURNAL (Only Purpose: Manage Target URLs)
+           ==================================================================== -->
+      <section class="page-view" id="view-journals">
+        <div class="page-header">
+          <h2 class="page-title">Kelola Sasaran Jurnal</h2>
+          <p class="page-subtitle">Daftar portal jurnal OJS yang menjadi sumber pemindaian arsip pada berkas konfigurasi journal.txt.</p>
+        </div>
+
+        <div class="journals-management-layout">
+          <!-- Add Target Form -->
+          <div class="card add-journal-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="panel-icon" data-icon="plus"></span>
+                <h3 class="card-title">Tambah URL Jurnal OJS</h3>
+              </div>
+            </div>
+            <form id="add-journal-form" class="form-body">
+              <div class="form-group">
+                <label for="new-journal-url" class="form-label">
+                  URL Basis Jurnal
+                  <span class="required-mark">*</span>
+                </label>
+                <div class="input-with-icon">
+                  <span class="input-icon-left" data-icon="globe"></span>
+                  <input 
+                    type="url" 
+                    id="new-journal-url" 
+                    class="form-control" 
+                    placeholder="https://jurnal.kampus.ac.id/index.php/nama_jurnal" 
+                    required
+                  >
+                </div>
+                <p class="form-hint">Harus merupakan URL valid OJS dengan segmen <code>/index.php/nama_jurnal</code> atau direktori jurnal.</p>
+              </div>
+              <button type="submit" class="btn btn-primary" id="btn-add-journal">
+                <span data-icon="plus"></span>
+                <span>Daftarkan ke journal.txt</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Target List Card -->
+          <div class="card target-list-card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="panel-icon" data-icon="book-open"></span>
+                <h3 class="card-title">Jurnal Terkonfigurasi</h3>
+              </div>
+              <span class="badge" id="journal-count-badge">0 Jurnal</span>
+            </div>
+            <div class="journal-list-container" id="journal-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           VIEW 5: STATISTIK & SISTEM (Only Purpose: Metrics & Architecture)
+           ==================================================================== -->
+      <section class="page-view" id="view-stats">
+        <div class="page-header">
+          <h2 class="page-title">Statistik & Spesifikasi Sistem</h2>
+          <p class="page-subtitle">Ringkasan analitik kumpulan data akademik serta detail arsitektur mesin perayap Java 21 LTS.</p>
+        </div>
+
+        <!-- KPI Strip -->
+        <div class="stats-kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Total Artikel</span>
+              <span class="kpi-icon" data-icon="file-text"></span>
+            </div>
+            <div class="kpi-value" id="kpi-total-articles">—</div>
+            <div class="kpi-subtext">Dari direktori lokal output/</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Jurnal Sasaran</span>
+              <span class="kpi-icon" data-icon="book-open"></span>
+            </div>
+            <div class="kpi-value" id="kpi-total-journals">—</div>
+            <div class="kpi-subtext" id="kpi-journals-sub">Dalam journal.txt</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Cakupan DOI</span>
+              <span class="kpi-icon" data-icon="shield-check"></span>
+            </div>
+            <div class="kpi-value" id="kpi-doi-percentage">—</div>
+            <div class="kpi-subtext" id="kpi-doi-count">— artikel ber-DOI</div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Mesin Java</span>
+              <span class="kpi-icon" data-icon="cpu"></span>
+            </div>
+            <div class="kpi-value" style="font-size: 1.2rem; color: var(--accent);">Java 21 LTS</div>
+            <div class="kpi-subtext">Cascading Extractor & Dedup</div>
+          </div>
+        </div>
+
+        <!-- System & Pipeline Details -->
+        <div class="system-specs-grid">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="panel-icon" data-icon="shield-check"></span>
+                <h3 class="card-title">Arsitektur Pipeline Ekstraksi</h3>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="feature-checklist">
+                <div class="feature-item">
+                  <span class="feature-icon" data-icon="check-circle"></span>
+                  <div class="feature-text">
+                    <strong>Penyaring Galley & Unduhan:</strong> Menepis URL galley viewer (<code>/article/view/{id}/{galleyId}</code>) dan file direct-download guna mencegah artikel duplikat "View of...".
+                  </div>
+                </div>
+                <div class="feature-item">
+                  <span class="feature-icon" data-icon="check-circle"></span>
+                  <div class="feature-text">
+                    <strong>Jsoup Cascading Extractor:</strong> Ekstraksi meta tag Highwire Press & Dublin Core dengan fallback CSS selector DOM OJS modern.
+                  </div>
+                </div>
+                <div class="feature-item">
+                  <span class="feature-icon" data-icon="check-circle"></span>
+                  <div class="feature-text">
+                    <strong>Deduplikasi 3 Lapis:</strong> Mengeliminasi data duplikat lewat URL Kanonikal, normalisasi DOI, dan sidik jari semantik (Judul + Penulis + Tahun).
+                  </div>
+                </div>
+                <div class="feature-item">
+                  <span class="feature-icon" data-icon="check-circle"></span>
+                  <div class="feature-text">
+                    <strong>Sanitasi & Quality Gate:</strong> Menolak *ghost records* tanpa atribut akademik dan menormalisasi mojibake UTF-8.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title-group">
+                <span class="panel-icon" data-icon="cpu"></span>
+                <h3 class="card-title">Informasi Lingkungan Runtime</h3>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="sysinfo-list">
+                <div class="sysinfo-row">
+                  <span class="sysinfo-label">Runtime:</span>
+                  <span class="sysinfo-val">Java 21 LTS (HotSpot 64-bit)</span>
+                </div>
+                <div class="sysinfo-row">
+                  <span class="sysinfo-label">Trust Store TLS:</span>
+                  <span class="sysinfo-val">Windows-ROOT</span>
+                </div>
+                <div class="sysinfo-row">
+                  <span class="sysinfo-label">Pustaka Parsing:</span>
+                  <span class="sysinfo-val">Jsoup 1.18.3 HTML/XML</span>
+                </div>
+                <div class="sysinfo-row">
+                  <span class="sysinfo-label">Penyimpanan:</span>
+                  <span class="sysinfo-val"><code>output/{journal}/</code> (CSV & JSON)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Article Detail Modal / Drawer -->
+  <div class="modal-backdrop" id="article-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-badge-group">
+          <span class="badge badge-accent" id="modal-year-badge">—</span>
+          <span class="badge" id="modal-journal-badge">—</span>
+        </div>
+        <button type="button" class="btn-icon-sm" id="btn-close-modal" aria-label="Tutup Dialog">
+          <span data-icon="x"></span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <h2 class="modal-article-title" id="modal-article-title">—</h2>
+        
+        <div class="modal-meta-row">
+          <div class="meta-item">
+            <span class="meta-label">Penulis</span>
+            <span class="meta-val" id="modal-authors">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Tanggal Terbit</span>
+            <span class="meta-val" id="modal-published">—</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">DOI</span>
+            <span class="meta-val" id="modal-doi">—</span>
+          </div>
+        </div>
+
+        <div class="modal-links-bar">
+          <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modal-link-original">
+            <span data-icon="external-link"></span>
+            <span>Buka Laman OJS Asli</span>
+          </a>
+          <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" id="modal-link-doi">
+            <span data-icon="external-link"></span>
+            <span>Resolusi DOI</span>
+          </a>
+        </div>
+
+        <div class="modal-abstract-section">
+          <h3 class="abstract-heading">Abstrak Artikel</h3>
+          <p class="abstract-content" id="modal-abstract-text">—</p>
+        </div>
+
+        <!-- Article Keywords Section -->
+        <div class="modal-keywords-section" id="modal-keywords-container">
+          <h3 class="abstract-heading">
+            <span class="icon-heading" data-icon="tag"></span>
+            <span>Kata Kunci (Keywords)</span>
+          </h3>
+          <div class="keywords-pill-group" id="modal-keywords-list">
+            <!-- Dynamic keyword pills rendered here -->
+          </div>
+        </div>
+
+        <!-- Citation Generator -->
+        <div class="citation-box">
+          <div class="citation-header">
+            <span class="citation-title">
+              <span data-icon="quote"></span>
+              <span>Sitasi Akademik Cepat</span>
+            </span>
+            <div class="citation-tabs">
+              <button type="button" class="cite-tab active" data-format="apa">APA 7th</button>
+              <button type="button" class="cite-tab" data-format="bibtex">BibTeX</button>
+              <button type="button" class="cite-tab" data-format="ris">RIS</button>
+            </div>
+          </div>
+          <div class="citation-output-wrap">
+            <pre class="citation-code" id="citation-display-text">—</pre>
+            <button type="button" class="btn btn-secondary btn-sm btn-copy-cite" id="btn-copy-citation">
+              <span data-icon="copy"></span>
+              <span>Salin Sitasi</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
