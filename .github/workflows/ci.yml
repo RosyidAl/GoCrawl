@@ -126,8 +126,12 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
+          timeout: 30s
+          command_timeout: 90s
+          debug: true
           script: |
-            set -e
+            set -eux
+            echo "SSH remote script started"
             export PATH="/usr/local/nvm/versions/node/v24.14.0/bin:$PATH"
             cd /var/www/gocrawl
             echo "Pulling latest main..."
