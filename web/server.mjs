@@ -179,13 +179,11 @@ function startCrawl({ keyword, fromYear, toYear, customTargets }) {
     fs.writeFileSync(JOURNAL_FILE, customTargets.map(t => t.trim()).filter(Boolean).join('\n') + '\n', 'utf-8');
   }
 
-  const args = [
-    '-Djavax.net.ssl.trustStoreType=Windows-ROOT',
-    '-jar',
-    JAR_PATH,
-    '--keyword',
-    keyword.trim(),
-  ];
+  const args = [];
+  if (process.platform === 'win32') {
+    args.push('-Djavax.net.ssl.trustStoreType=Windows-ROOT');
+  }
+  args.push('-jar', JAR_PATH, '--keyword', keyword.trim());
 
   if (fromYear) args.push('--from-year', String(fromYear));
   if (toYear) args.push('--to-year', String(toYear));
