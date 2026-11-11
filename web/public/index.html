@@ -373,7 +373,7 @@
       <section class="page-view" id="view-journals">
         <div class="page-header">
           <h2 class="page-title">Kelola Sasaran Jurnal</h2>
-          <p class="page-subtitle">Daftar portal jurnal OJS yang menjadi sumber pemindaian arsip pada berkas konfigurasi journal.txt.</p>
+          <p class="page-subtitle">Daftar portal jurnal OJS sasaran Anda. Daftar ini tersimpan mandiri di browser Anda dan tidak akan tertukar dengan pengguna lain.</p>
         </div>
 
         <div class="journals-management-layout">
@@ -405,7 +405,7 @@
               </div>
               <button type="submit" class="btn btn-primary" id="btn-add-journal">
                 <span data-icon="plus"></span>
-                <span>Daftarkan ke journal.txt</span>
+                <span>Tambahkan Target Jurnal</span>
               </button>
             </form>
           </div>
@@ -415,9 +415,15 @@
             <div class="card-header">
               <div class="card-title-group">
                 <span class="panel-icon" data-icon="book-open"></span>
-                <h3 class="card-title">Jurnal Terkonfigurasi</h3>
+                <h3 class="card-title">Jurnal Sasaran Anda</h3>
               </div>
-              <span class="badge" id="journal-count-badge">0 Jurnal</span>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-journals" title="Kembalikan daftar ke template default" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                  <span data-icon="refresh-cw"></span>
+                  <span>Reset Default</span>
+                </button>
+                <span class="badge" id="journal-count-badge">0 Jurnal</span>
+              </div>
             </div>
             <div class="journal-list-container" id="journal-list"></div>
           </div>

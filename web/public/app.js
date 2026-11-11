@@ -309,8 +309,9 @@ async function fetchStatus() {
     document.getElementById('kpi-total-articles').textContent = data.totalArticles.toLocaleString('id-ID');
     document.getElementById('nav-count-articles').textContent = data.totalArticles;
 
-    document.getElementById('kpi-total-journals').textContent = data.totalJournalsConfigured;
-    document.getElementById('nav-count-journals').textContent = data.totalJournalsConfigured;
+    const userTargetCount = Array.isArray(state.journals) ? state.journals.length : data.totalJournalsConfigured;
+    document.getElementById('kpi-total-journals').textContent = userTargetCount;
+    document.getElementById('nav-count-journals').textContent = userTargetCount;
     document.getElementById('kpi-journals-sub').textContent = `${data.journalsWithData} jurnal memiliki data`;
 
     document.getElementById('kpi-doi-percentage').textContent = `${data.doiPercentage}%`;
@@ -364,10 +365,15 @@ function setupCrawlerForm() {
 
     btnStart.disabled = true;
     try {
+      const customTargets = (state.journals || []).map(j => j.url).filter(Boolean);
+      if (customTargets.length === 0) {
+        throw new Error('Daftar jurnal sasaran Anda masih kosong. Tambahkan jurnal di tab "Target Jurnal" terlebih dahulu!');
+      }
+
       const res = await fetch('/api/crawl/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword, fromYear, toYear }),
+        body: JSON.stringify({ keyword, fromYear, toYear, customTargets }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal memulai perayapan.');
@@ -783,42 +789,134 @@ function renderArticles() {
   });
 }
 
-// Target Journals Manager
+// ====================================================================
+// TARGET JOURNALS MANAGER (User-Isolated via localStorage)
+// ====================================================================
+const STORAGE_KEY_JOURNALS = 'gocrawl_user_targets_v1';
+
+function getStoredJournalUrls() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_JOURNALS);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map(u => String(u).trim()).filter(Boolean) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveStoredJournalUrls(urls) {
+  try {
+    localStorage.setItem(STORAGE_KEY_JOURNALS, JSON.stringify(urls));
+  } catch (err) {
+    console.error('Gagal menyimpan target jurnal ke localStorage:', err);
+  }
+}
+
+function extractJournalName(url) {
+  try {
+    const u = new URL(url);
+    const parts = u.pathname.split('/').filter(Boolean);
+    const idx = parts.indexOf('index.php');
+    if (idx !== -1 && parts[idx + 1]) {
+      return parts[idx + 1].toUpperCase();
+    }
+    return parts[parts.length - 1] ? parts[parts.length - 1].toUpperCase() : u.hostname.toUpperCase();
+  } catch {
+    return 'UNKNOWN';
+  }
+}
+
+function getArticleCountForJournal(name) {
+  if (!Array.isArray(state.articles)) return 0;
+  return state.articles.filter(a => {
+    const jName = (a.journal || a.journalFolder || '').toUpperCase();
+    return jName === name.toUpperCase();
+  }).length;
+}
+
 function setupJournalManager() {
   const form = document.getElementById('add-journal-form');
+  const urlInput = document.getElementById('new-journal-url');
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const urlInput = document.getElementById('new-journal-url');
-    const url = urlInput.value.trim();
-    if (!url) return;
+    const rawUrl = urlInput.value.trim();
+    if (!rawUrl) return;
 
     try {
-      const res = await fetch('/api/journals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Gagal menambahkan target.');
-
-      urlInput.value = '';
-      showToast('Jurnal sasaran berhasil ditambahkan!', 'success');
-      await fetchJournals();
-      await fetchStatus();
-    } catch (err) {
-      showToast(err.message, 'error');
+      const u = new URL(rawUrl);
+      if (!['http:', 'https:'].includes(u.protocol) || !u.hostname) {
+        throw new Error('URL harus diawali dengan http:// atau https://');
+      }
+    } catch {
+      showToast('Format URL tidak valid. Gunakan format lengkap (misal: https://...)', 'error');
+      return;
     }
+
+    let urls = getStoredJournalUrls() || (state.journals || []).map(j => j.url);
+    if (urls.includes(rawUrl)) {
+      showToast('Jurnal ini sudah ada dalam daftar sasaran Anda.', 'info');
+      return;
+    }
+
+    urls.push(rawUrl);
+    saveStoredJournalUrls(urls);
+    urlInput.value = '';
+    showToast('Jurnal sasaran berhasil ditambahkan ke daftar Anda!', 'success');
+    await fetchJournals();
   });
+
+  const btnReset = document.getElementById('btn-reset-journals');
+  if (btnReset) {
+    btnReset.addEventListener('click', async () => {
+      if (!confirm('Kembalikan daftar jurnal sasaran ke daftar bawaan default?')) return;
+      try {
+        const res = await fetch('/api/journals');
+        if (res.ok) {
+          const serverJournals = await res.json();
+          const urls = serverJournals.map(j => (typeof j === 'string' ? j : j.url)).filter(Boolean);
+          saveStoredJournalUrls(urls);
+          showToast('Daftar target berhasil direset ke bawaan default.', 'success');
+          await fetchJournals();
+        }
+      } catch (err) {
+        showToast('Gagal mereset jurnal: ' + err.message, 'error');
+      }
+    });
+  }
 }
 
 async function fetchJournals() {
   try {
-    const res = await fetch('/api/journals');
-    if (!res.ok) return;
-    state.journals = await res.json();
+    let urls = getStoredJournalUrls();
+    // Jika user baru pertama kali buka (belum ada di localStorage), ambil default dari server
+    if (!urls || urls.length === 0) {
+      const res = await fetch('/api/journals');
+      if (res.ok) {
+        const serverJournals = await res.json();
+        urls = serverJournals.map(j => (typeof j === 'string' ? j : j.url)).filter(Boolean);
+        saveStoredJournalUrls(urls);
+      } else {
+        urls = [];
+      }
+    }
+
+    state.journals = urls.map((url, idx) => ({
+      id: idx + 1,
+      url,
+      name: extractJournalName(url),
+      articleCount: getArticleCountForJournal(extractJournalName(url)),
+    }));
+
     renderJournalList();
     renderJournalSelect();
     renderTargetSummary();
+
+    const navBadge = document.getElementById('nav-count-journals');
+    if (navBadge) navBadge.textContent = state.journals.length;
+    const kpiJournals = document.getElementById('kpi-total-journals');
+    if (kpiJournals) kpiJournals.textContent = state.journals.length;
   } catch (err) {
     console.error('Failed fetching journals:', err);
   }
@@ -834,7 +932,7 @@ function renderJournalList() {
       <div class="empty-state" style="padding: 2rem;">
         <span class="icon-slot">${ICONS['book-open']}</span>
         <h3 class="empty-title">Belum Ada Target Jurnal</h3>
-        <p class="empty-desc">Tambahkan URL portal OJS melalui form di samping.</p>
+        <p class="empty-desc">Tambahkan URL portal OJS sasaran Anda melalui form di samping.</p>
       </div>
     `;
     return;
@@ -853,7 +951,7 @@ function renderJournalList() {
           </span>
         </div>
       </div>
-      <button type="button" class="btn-icon-sm btn-delete-journal" data-url="${escapeHtml(j.url)}" title="Hapus jurnal">
+      <button type="button" class="btn-icon-sm btn-delete-journal" data-url="${escapeHtml(j.url)}" title="Hapus jurnal dari daftar Anda">
         <span class="icon-slot">${ICONS.trash}</span>
       </button>
     </div>
@@ -862,21 +960,13 @@ function renderJournalList() {
   container.querySelectorAll('.btn-delete-journal').forEach(btn => {
     btn.addEventListener('click', async () => {
       const targetUrl = btn.getAttribute('data-url');
-      if (!confirm(`Hapus jurnal ${targetUrl} dari journal.txt?`)) return;
+      if (!confirm(`Hapus jurnal sasaran ini dari daftar Anda?\n\n${targetUrl}`)) return;
 
-      try {
-        const res = await fetch('/api/journals', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: targetUrl }),
-        });
-        if (!res.ok) throw new Error('Gagal menghapus.');
-        showToast('Jurnal sasaran berhasil dihapus.', 'info');
-        await fetchJournals();
-        await fetchStatus();
-      } catch (err) {
-        showToast(err.message, 'error');
-      }
+      let urls = getStoredJournalUrls() || (state.journals || []).map(j => j.url);
+      urls = urls.filter(u => u !== targetUrl);
+      saveStoredJournalUrls(urls);
+      showToast('Jurnal sasaran berhasil dihapus dari daftar Anda.', 'info');
+      await fetchJournals();
     });
   });
 }
