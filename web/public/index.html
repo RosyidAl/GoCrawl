@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>GoCrawl — OJS Academic Harvester</title>
-  <meta name="description" content="Dashboard antarmuka kontrol dan eksplorasi data hasil perayapan metadata jurnal ilmiah OJS berbasis Java 21.">
+  <title>GoCrawl - OJS Academic Harvester</title>
+  <meta name="description" content="Dashboard eksplorasi dan perayapan metadata jurnal ilmiah OJS untuk riset akademik.">
   <link rel="stylesheet" href="styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +47,7 @@
       <nav class="sidebar-nav" aria-label="Navigasi Utama">
         <button type="button" class="nav-item active" data-view="view-crawl">
           <span class="nav-item-icon" data-icon="play"></span>
-          <span class="nav-item-text">Mulai Crawling</span>
+          <span class="nav-item-text">Mulai Penelusuran</span>
         </button>
 
         <button type="button" class="nav-item" data-view="view-monitor">
@@ -58,7 +58,7 @@
 
         <button type="button" class="nav-item" data-view="view-articles">
           <span class="nav-item-icon" data-icon="database"></span>
-          <span class="nav-item-text">Data Artikel</span>
+          <span class="nav-item-text">Koleksi Artikel</span>
           <span class="nav-badge" id="nav-count-articles">0</span>
         </button>
 
@@ -70,7 +70,7 @@
 
         <button type="button" class="nav-item" data-view="view-stats">
           <span class="nav-item-icon" data-icon="shield-check"></span>
-          <span class="nav-item-text">Statistik & Sistem</span>
+          <span class="nav-item-text">Statistik & Standar</span>
         </button>
       </nav>
 
@@ -80,7 +80,7 @@
           <span class="status-indicator-dot idle" id="sidebar-status-dot"></span>
           <div class="status-text-wrap">
             <span class="status-state-label" id="sidebar-status-text">Siap</span>
-            <span class="status-runtime-sub" id="sidebar-runtime-sub">Java 21 LTS</span>
+            <span class="status-runtime-sub" id="sidebar-runtime-sub">Sistem Online</span>
           </div>
         </div>
 
@@ -180,7 +180,7 @@
         <div class="page-header header-with-actions">
           <div>
             <h2 class="page-title">Live Monitor & Konsol</h2>
-            <p class="page-subtitle">Pantau alur eksekusi proses Java crawler, penjelajahan halaman, dan deteksi kecocokan secara real-time.</p>
+            <p class="page-subtitle">Pantau alur penelusuran artikel, penjelajahan arsip OJS, dan kecocokan kata kunci secara real-time.</p>
           </div>
           <div class="header-action-buttons">
             <button type="button" class="btn btn-danger btn-sm" id="btn-stop-crawl" disabled>
@@ -199,7 +199,7 @@
             </div>
             <div class="monitor-stat-item">
               <span class="m-stat-label">Jurnal Aktif</span>
-              <span class="m-stat-val" id="monitor-journal-text">—</span>
+              <span class="m-stat-val" id="monitor-journal-text">-</span>
             </div>
             <div class="monitor-stat-item">
               <span class="m-stat-label">Halaman Diperiksa</span>
@@ -239,7 +239,7 @@
             <div class="console-empty-placeholder" id="console-empty">
               <span class="console-empty-icon" data-icon="terminal"></span>
               <p>Belum ada proses perayapan aktif.</p>
-              <span class="text-muted">Jalankan perayapan pada menu Mulai Crawling untuk melihat streaming log di sini.</span>
+              <span class="text-muted">Jalankan perayapan pada menu Mulai Penelusuran untuk melihat streaming log di sini.</span>
             </div>
             <div class="console-lines" id="console-lines"></div>
           </div>
@@ -431,12 +431,12 @@
       </section>
 
       <!-- ====================================================================
-           VIEW 5: STATISTIK & SISTEM (Only Purpose: Metrics & Architecture)
+           VIEW 5: STATISTIK & METRIK (Research Metrics & Data Standards)
            ==================================================================== -->
       <section class="page-view" id="view-stats">
         <div class="page-header">
-          <h2 class="page-title">Statistik & Spesifikasi Sistem</h2>
-          <p class="page-subtitle">Ringkasan analitik kumpulan data akademik serta detail arsitektur mesin perayap Java 21 LTS.</p>
+          <h2 class="page-title">Statistik & Standar Data</h2>
+          <p class="page-subtitle">Ringkasan analitik kumpulan data artikel ilmiah dan metodologi kurasi metadata akademik.</p>
         </div>
 
         <!-- KPI Strip -->
@@ -446,7 +446,7 @@
               <span class="kpi-title">Total Artikel</span>
               <span class="kpi-icon" data-icon="file-text"></span>
             </div>
-            <div class="kpi-value" id="kpi-total-articles">—</div>
+            <div class="kpi-value" id="kpi-total-articles">-</div>
             <div class="kpi-subtext">Dari direktori lokal output/</div>
           </div>
 
@@ -455,8 +455,8 @@
               <span class="kpi-title">Jurnal Sasaran</span>
               <span class="kpi-icon" data-icon="book-open"></span>
             </div>
-            <div class="kpi-value" id="kpi-total-journals">—</div>
-            <div class="kpi-subtext" id="kpi-journals-sub">Dalam journal.txt</div>
+            <div class="kpi-value" id="kpi-total-journals">-</div>
+            <div class="kpi-subtext" id="kpi-journals-sub">Target aktif Anda</div>
           </div>
 
           <div class="kpi-card">
@@ -464,17 +464,17 @@
               <span class="kpi-title">Cakupan DOI</span>
               <span class="kpi-icon" data-icon="shield-check"></span>
             </div>
-            <div class="kpi-value" id="kpi-doi-percentage">—</div>
-            <div class="kpi-subtext" id="kpi-doi-count">— artikel ber-DOI</div>
+            <div class="kpi-value" id="kpi-doi-percentage">-</div>
+            <div class="kpi-subtext" id="kpi-doi-count">- artikel ber-DOI</div>
           </div>
 
           <div class="kpi-card">
             <div class="kpi-header">
-              <span class="kpi-title">Mesin Java</span>
-              <span class="kpi-icon" data-icon="cpu"></span>
+              <span class="kpi-title">Standar Ekstraksi</span>
+              <span class="kpi-icon" data-icon="check-circle"></span>
             </div>
-            <div class="kpi-value" style="font-size: 1.2rem; color: var(--accent);">Java 21 LTS</div>
-            <div class="kpi-subtext">Cascading Extractor & Dedup</div>
+            <div class="kpi-value" style="font-size: 1.15rem; color: var(--accent);">Highwire & DC</div>
+            <div class="kpi-subtext">Metadata Akademik Standar</div>
           </div>
         </div>
 
@@ -484,7 +484,7 @@
             <div class="card-header">
               <div class="card-title-group">
                 <span class="panel-icon" data-icon="shield-check"></span>
-                <h3 class="card-title">Arsitektur Pipeline Ekstraksi</h3>
+                <h3 class="card-title">Metode Kurasi & Ekstraksi Metadata</h3>
               </div>
             </div>
             <div class="card-body">
@@ -492,25 +492,25 @@
                 <div class="feature-item">
                   <span class="feature-icon" data-icon="check-circle"></span>
                   <div class="feature-text">
-                    <strong>Penyaring Galley & Unduhan:</strong> Menepis URL galley viewer (<code>/article/view/{id}/{galleyId}</code>) dan file direct-download guna mencegah artikel duplikat "View of...".
+                    <strong>Penyaringan Galley & Unduhan:</strong> Mengabaikan halaman viewer PDF (View of...) untuk mencegah artikel duplikat dan file download berulang.
                   </div>
                 </div>
                 <div class="feature-item">
                   <span class="feature-icon" data-icon="check-circle"></span>
                   <div class="feature-text">
-                    <strong>Jsoup Cascading Extractor:</strong> Ekstraksi meta tag Highwire Press & Dublin Core dengan fallback CSS selector DOM OJS modern.
+                    <strong>Kamus Standar Akademik:</strong> Mengekstrak meta tag resmi Highwire Press dan Dublin Core untuk memastikan kelengkapan penulis, abstrak, tanggal publikasi, dan DOI.
                   </div>
                 </div>
                 <div class="feature-item">
                   <span class="feature-icon" data-icon="check-circle"></span>
                   <div class="feature-text">
-                    <strong>Deduplikasi 3 Lapis:</strong> Mengeliminasi data duplikat lewat URL Kanonikal, normalisasi DOI, dan sidik jari semantik (Judul + Penulis + Tahun).
+                    <strong>Deduplikasi 3 Lapis:</strong> Memvalidasi artikel unik berdasarkan URL kanonikal, nomor DOI yang dinormalisasi, serta sidik jari semantik (Judul + Penulis + Tahun).
                   </div>
                 </div>
                 <div class="feature-item">
                   <span class="feature-icon" data-icon="check-circle"></span>
                   <div class="feature-text">
-                    <strong>Sanitasi & Quality Gate:</strong> Menolak *ghost records* tanpa atribut akademik dan menormalisasi mojibake UTF-8.
+                    <strong>Sanitasi & Kualitas Data:</strong> Menyaring rekaman kosong tanpa atribut akademik dan mereparasi teks multibita yang mengalami mojibake UTF-8.
                   </div>
                 </div>
               </div>
@@ -520,27 +520,27 @@
           <div class="card">
             <div class="card-header">
               <div class="card-title-group">
-                <span class="panel-icon" data-icon="cpu"></span>
-                <h3 class="card-title">Informasi Lingkungan Runtime</h3>
+                <span class="panel-icon" data-icon="database"></span>
+                <h3 class="card-title">Standar & Kompatibilitas Data</h3>
               </div>
             </div>
             <div class="card-body">
               <div class="sysinfo-list">
                 <div class="sysinfo-row">
-                  <span class="sysinfo-label">Runtime:</span>
-                  <span class="sysinfo-val">Java 21 LTS (HotSpot 64-bit)</span>
+                  <span class="sysinfo-label">Format Output:</span>
+                  <span class="sysinfo-val">CSV (Spreadsheet/SPSS) & JSON</span>
                 </div>
                 <div class="sysinfo-row">
-                  <span class="sysinfo-label">Trust Store TLS:</span>
-                  <span class="sysinfo-val">Windows-ROOT</span>
+                  <span class="sysinfo-label">Format Sitasi:</span>
+                  <span class="sysinfo-val">APA 7th, BibTeX, RIS (Zotero & Mendeley)</span>
                 </div>
                 <div class="sysinfo-row">
-                  <span class="sysinfo-label">Pustaka Parsing:</span>
-                  <span class="sysinfo-val">Jsoup 1.18.3 HTML/XML</span>
+                  <span class="sysinfo-label">Protokol Sasaran:</span>
+                  <span class="sysinfo-val">Open Journal Systems (OJS 2 & 3)</span>
                 </div>
                 <div class="sysinfo-row">
                   <span class="sysinfo-label">Penyimpanan:</span>
-                  <span class="sysinfo-val"><code>output/{journal}/</code> (CSV & JSON)</span>
+                  <span class="sysinfo-val"><code>output/{nama_jurnal}/</code> (Lokal Server)</span>
                 </div>
               </div>
             </div>
@@ -556,8 +556,8 @@
     <div class="modal-dialog">
       <div class="modal-header">
         <div class="modal-badge-group">
-          <span class="badge badge-accent" id="modal-year-badge">—</span>
-          <span class="badge" id="modal-journal-badge">—</span>
+          <span class="badge badge-accent" id="modal-year-badge">-</span>
+          <span class="badge" id="modal-journal-badge">-</span>
         </div>
         <button type="button" class="btn-icon-sm" id="btn-close-modal" aria-label="Tutup Dialog">
           <span data-icon="x"></span>
@@ -565,20 +565,20 @@
       </div>
 
       <div class="modal-body">
-        <h2 class="modal-article-title" id="modal-article-title">—</h2>
+        <h2 class="modal-article-title" id="modal-article-title">-</h2>
         
         <div class="modal-meta-row">
           <div class="meta-item">
             <span class="meta-label">Penulis</span>
-            <span class="meta-val" id="modal-authors">—</span>
+            <span class="meta-val" id="modal-authors">-</span>
           </div>
           <div class="meta-item">
             <span class="meta-label">Tanggal Terbit</span>
-            <span class="meta-val" id="modal-published">—</span>
+            <span class="meta-val" id="modal-published">-</span>
           </div>
           <div class="meta-item">
             <span class="meta-label">DOI</span>
-            <span class="meta-val" id="modal-doi">—</span>
+            <span class="meta-val" id="modal-doi">-</span>
           </div>
         </div>
 
@@ -595,7 +595,7 @@
 
         <div class="modal-abstract-section">
           <h3 class="abstract-heading">Abstrak Artikel</h3>
-          <p class="abstract-content" id="modal-abstract-text">—</p>
+          <p class="abstract-content" id="modal-abstract-text">-</p>
         </div>
 
         <!-- Article Keywords Section -->
@@ -623,7 +623,7 @@
             </div>
           </div>
           <div class="citation-output-wrap">
-            <pre class="citation-code" id="citation-display-text">—</pre>
+            <pre class="citation-code" id="citation-display-text">-</pre>
             <button type="button" class="btn btn-secondary btn-sm btn-copy-cite" id="btn-copy-citation">
               <span data-icon="copy"></span>
               <span>Salin Sitasi</span>

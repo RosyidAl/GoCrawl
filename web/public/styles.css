@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GoCrawl Academic Harvester — Left Sidebar Single-Purpose UI
+   GoCrawl Academic Harvester - Left Sidebar Single-Purpose UI
    Strictly NO EMOJIS. Built under dashboard-design & antislop guidelines.
    ========================================================================== */
 
@@ -101,7 +101,23 @@ html, body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+/* Accessible Focus States (Hallmark Floor Rule 6 & Antislop R-32) */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Reduced Motion Preference (Hallmark Floor Rule 7) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Icons */
@@ -239,7 +255,7 @@ html, body {
   color: var(--text-secondary);
   cursor: pointer;
   text-align: left;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   min-height: 42px;
 }
 
@@ -358,7 +374,7 @@ html, body {
   font-family: inherit;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .btn-theme-toggle:hover {
@@ -510,7 +526,7 @@ html, body {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .form-control:focus {
@@ -555,7 +571,7 @@ html, body {
   font-size: 0.75rem;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .preset-tag:hover {
@@ -590,7 +606,7 @@ html, body {
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   min-height: 42px;
 }
 
@@ -647,7 +663,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .btn-icon-sm:hover, .btn-icon:hover {
@@ -1428,7 +1444,7 @@ html, body {
   color: var(--text-secondary);
   font-size: 0.75rem;
   font-weight: 500;
-  transition: all 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .keyword-pill:hover {

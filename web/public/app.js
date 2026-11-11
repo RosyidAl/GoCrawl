@@ -1,5 +1,5 @@
 /**
- * GoCrawl Academic Harvester — Frontend Application (Sidebar Single-Purpose UI)
+ * GoCrawl Academic Harvester - Frontend Application (Sidebar Single-Purpose UI)
  * Strict adherence to:
  * - NO EMOJIS (100% handcrafted SVG icons)
  * - Single-purpose pages (Mulai Crawl, Live Monitor, Data Artikel, Kelola Jurnal, Statistik)
@@ -725,7 +725,7 @@ function renderArticles() {
   // Desktop Table
   tbody.innerHTML = state.articles.map((a, idx) => `
     <tr>
-      <td><span class="badge">${escapeHtml(a.year || '—')}</span></td>
+      <td><span class="badge">${escapeHtml(a.year || '-')}</span></td>
       <td>
         <div class="article-title-text" data-article-idx="${idx}">${escapeHtml(a.title)}</div>
         <div class="article-authors-text">${escapeHtml(a.authors || 'Penulis Tidak Dicantumkan')}</div>
@@ -739,7 +739,7 @@ function renderArticles() {
             <span>${escapeHtml(a.doi)}</span>
             <span class="icon-slot">${ICONS['external-link']}</span>
           </a>
-        ` : '<span class="text-muted">—</span>'}
+        ` : '<span class="text-muted">-</span>'}
       </td>
       <td style="text-align: center;">
         <button type="button" class="btn btn-secondary btn-sm btn-inspect-article" data-article-idx="${idx}" title="Detail Lengkap & Sitasi">
@@ -753,7 +753,7 @@ function renderArticles() {
   cardsContainer.innerHTML = state.articles.map((a, idx) => `
     <div class="article-mobile-card" data-article-idx="${idx}">
       <div class="card-top-meta">
-        <span class="badge">${escapeHtml(a.year || '—')}</span>
+        <span class="badge">${escapeHtml(a.year || '-')}</span>
         <span class="badge badge-subtle">${escapeHtml(a.journalFolder || 'OJS')}</span>
       </div>
       <h3 class="card-mobile-title">${escapeHtml(a.title)}</h3>
@@ -1031,11 +1031,11 @@ function openArticleModal(article) {
   state.selectedArticle = article;
   const modal = document.getElementById('article-modal');
 
-  document.getElementById('modal-year-badge').textContent = article.year || 'Tahun —';
+  document.getElementById('modal-year-badge').textContent = article.year || 'Tahun -';
   document.getElementById('modal-journal-badge').textContent = article.journal || article.journalFolder || 'OJS Journal';
   document.getElementById('modal-article-title').textContent = article.title;
   document.getElementById('modal-authors').textContent = article.authors || 'Tidak Disebutkan';
-  document.getElementById('modal-published').textContent = article.published || article.year || '—';
+  document.getElementById('modal-published').textContent = article.published || article.year || '-';
   document.getElementById('modal-doi').textContent = article.doi || 'Tidak Ada';
 
   const linkOrig = document.getElementById('modal-link-original');
