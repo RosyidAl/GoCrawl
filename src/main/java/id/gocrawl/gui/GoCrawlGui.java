@@ -1,6 +1,5 @@
 package id.gocrawl.gui;
 
-import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import id.gocrawl.*;
@@ -35,14 +34,11 @@ public class GoCrawlGui extends JFrame {
     private final JTextField fromYearField = new JTextField("2021", 5);
     private final JTextField toYearField = new JTextField("2026", 5);
     private final JButton crawlBtn = new JButton("Mulai Crawl");
-    private final JButton themeBtn = new JButton("Tema: Gelap");
-    private final JButton viewCatalogBtn = new JButton("📚 Jurnal Terindeks");
 
     private JournalCatalog catalog;
     private ArticleTablePanel tablePanel;
     private DetailInspectorPanel inspectorPanel;
 
-    private boolean isDarkMode = false;
     private SwingWorker<Void, Article> currentSearchWorker;
     private final List<Article> masterArticleList = new ArrayList<>();
     private final Map<Integer, List<Article>> pageCache = new ConcurrentHashMap<>();
@@ -82,6 +78,9 @@ public class GoCrawlGui extends JFrame {
         JMenuBar menuBar = new JMenuBar();
 
         JMenu fileMenu = new JMenu("File");
+        JMenuItem viewJournalsFileItem = new JMenuItem("Lihat Jurnal Terindeks...");
+        viewJournalsFileItem.addActionListener(e -> showIndexedJournals());
+
         JMenuItem addJournalItem = new JMenuItem("Tambah Jurnal Sumber...");
         addJournalItem.addActionListener(e -> new AddJournalDialog(this, () -> {
             initCatalog();
@@ -91,6 +90,7 @@ public class GoCrawlGui extends JFrame {
         JMenuItem exitItem = new JMenuItem("Keluar");
         exitItem.addActionListener(e -> System.exit(0));
 
+        fileMenu.add(viewJournalsFileItem);
         fileMenu.add(addJournalItem);
         fileMenu.addSeparator();
         fileMenu.add(exitItem);
@@ -117,12 +117,6 @@ public class GoCrawlGui extends JFrame {
         subBadge.setForeground(new Color(120, 120, 120));
         brandBox.add(titleLabel);
         brandBox.add(subBadge);
-
-        viewCatalogBtn.setFont(viewCatalogBtn.getFont().deriveFont(Font.BOLD, 12f));
-        viewCatalogBtn.setToolTipText("Buka direktori seluruh jurnal ilmiah yang telah terdaftar di Master Registry");
-        viewCatalogBtn.addActionListener(e -> showIndexedJournals());
-        brandBox.add(Box.createHorizontalStrut(6));
-        brandBox.add(viewCatalogBtn);
 
         headerToolbar.add(brandBox, BorderLayout.WEST);
 
@@ -156,9 +150,6 @@ public class GoCrawlGui extends JFrame {
         searchControls.add(crawlBtn);
 
         headerToolbar.add(searchControls, BorderLayout.CENTER);
-
-        // Saklar Tema di Kanan Toolbar
-        headerToolbar.add(themeBtn, BorderLayout.EAST);
         add(headerToolbar, BorderLayout.NORTH);
 
         // 3. Tata Letak Bersih 2-Panel (Tabel Artikel di Kiri/Tengah & Detail Inspector di Kanan)
@@ -177,7 +168,6 @@ public class GoCrawlGui extends JFrame {
 
         // Event Handlers
         crawlBtn.addActionListener(e -> handleCrawlToggle());
-        themeBtn.addActionListener(e -> toggleTheme());
         keywordField.addActionListener(e -> handleCrawlToggle());
     }
 
@@ -341,23 +331,6 @@ public class GoCrawlGui extends JFrame {
             Files.createDirectories(outDir);
             ArticleStorage.saveJson(outDir.resolve("articles.json"), masterArticleList);
         } catch (Exception ignored) {}
-    }
-
-    private void toggleTheme() {
-        try {
-            if (isDarkMode) {
-                FlatLightLaf.setup();
-                themeBtn.setText("Tema: Gelap");
-                isDarkMode = false;
-            } else {
-                FlatDarkLaf.setup();
-                themeBtn.setText("Tema: Terang");
-                isDarkMode = true;
-            }
-            FlatLaf.updateUI();
-        } catch (Exception ex) {
-            System.err.println("Gagal beralih tema: " + ex.getMessage());
-        }
     }
 
     public static void launch() {

@@ -109,8 +109,9 @@ public final class SintaResolver {
 
     private SintaInfo fetchFromSinta(String cleanName, String optionalUrl) {
         try {
-            // Gunakan query pendek bersih (hilangkan singkatan dalam kurung untuk pencarian SINTA yang lebih fleksibel)
-            String searchQuery = cleanName.replaceAll("\\(.*\\)", "").replaceAll("(?i)\\bjurnal\\b|\\bjournal\\b", "").strip();
+            // Gunakan query pendek bersih: ambil frasa utama sebelum pemisah judul sekunder (titik dua, dash, kurung)
+            String searchQuery = cleanName.replaceAll("[:–—].*", "").replaceAll("\\(.*\\)", "").replaceAll("(?i)\\bjurnal\\b|\\bjournal\\b", "").strip();
+            if (searchQuery.length() < 3) searchQuery = cleanName.replaceAll("[:–—].*", "").strip();
             if (searchQuery.length() < 3) searchQuery = cleanName;
 
             String sintaUrl = SINTA_BASE_URL + URLEncoder.encode(searchQuery, StandardCharsets.UTF_8);
@@ -176,6 +177,11 @@ public final class SintaResolver {
         // Cocokkan jika salah satu memuat yang lain (minimal panjang 5 karakter)
         if (nTarget.length() >= 6 && nCandidate.contains(nTarget)) return true;
         if (nCandidate.length() >= 6 && nTarget.contains(nCandidate)) return true;
+
+        // Cek bagian sebelum titik dua/tanda hubung jika ada
+        String targetPrefix = normalizeKey(target.replaceAll("[:–—].*", ""));
+        String candidatePrefix = normalizeKey(candidate.replaceAll("[:–—].*", ""));
+        if (!targetPrefix.isEmpty() && targetPrefix.equals(candidatePrefix)) return true;
 
         // Cek tanpa kata 'jurnal' / 'journal'
         String strippedTarget = nTarget.replaceAll("^(?:jurnal|journal)", "");

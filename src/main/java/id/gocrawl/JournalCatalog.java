@@ -186,10 +186,24 @@ public final class JournalCatalog {
         String resolvedId = GarudaSubject.resolveSubjectId(subjectIdOrName);
         List<Journal> result = new ArrayList<>();
         for (Journal j : journalsById.values()) {
-            if (resolvedId != null && j.subjectId().equals(resolvedId)) {
-                result.add(j);
-            } else if (j.subjectName().equalsIgnoreCase(subjectIdOrName)
-                    || j.subjectName().toLowerCase(Locale.ROOT).contains(subjectIdOrName.toLowerCase(Locale.ROOT))) {
+            boolean matches = false;
+            if (resolvedId != null) {
+                for (String part : j.subjectId().split(",")) {
+                    if (part.trim().equals(resolvedId)) {
+                        matches = true;
+                        break;
+                    }
+                }
+            }
+            if (!matches) {
+                String q = subjectIdOrName.toLowerCase(Locale.ROOT).trim();
+                if (j.subjectName() != null && j.subjectName().toLowerCase(Locale.ROOT).contains(q)) {
+                    matches = true;
+                } else if (j.coreSubject() != null && j.coreSubject().toLowerCase(Locale.ROOT).contains(q)) {
+                    matches = true;
+                }
+            }
+            if (matches) {
                 result.add(j);
             }
         }

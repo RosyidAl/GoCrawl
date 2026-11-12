@@ -1,5 +1,13 @@
 [
   {
+    "queryKey": "jurnalmanajemenpendidikandanilmusosial",
+    "journalName": "Jurnal Manajemen Pendidikan dan Ilmu Sosial (JMPIS)",
+    "sintaRank": "S3",
+    "publisher": "DINASTI REVIEW",
+    "ojsUrl": "https://dinastirev.org/JMPIS",
+    "garudaId": "19612"
+  },
+  {
     "queryKey": "mataazirjurnaladministrasidanmanajemenpendidikan",
     "journalName": "MATAAZIR: Jurnal Administrasi dan Manajemen Pendidikan",
     "sintaRank": "-",
@@ -16,24 +24,16 @@
     "garudaId": "-"
   },
   {
-    "queryKey": "inveritatelux",
-    "journalName": "IN VERITATE LUX",
+    "queryKey": "ajamiyjurnalbahasadansastraarab",
+    "journalName": "'A Jamiy: Jurnal Bahasa dan Sastra Arab",
     "sintaRank": "-",
     "publisher": "-",
     "ojsUrl": "-",
     "garudaId": "-"
   },
   {
-    "queryKey": "jurnalmanajemenpendidikandanilmusosial",
-    "journalName": "Jurnal Manajemen Pendidikan dan Ilmu Sosial (JMPIS)",
-    "sintaRank": "S3",
-    "publisher": "DINASTI REVIEW",
-    "ojsUrl": "https://dinastirev.org/JMPIS",
-    "garudaId": "19612"
-  },
-  {
-    "queryKey": "jurnalabdielkhazanahpemikiranteologipendidikanagamakristendanmusikgereja",
-    "journalName": "Jurnal Abdiel: Khazanah Pemikiran Teologi, Pendidikan Agama Kristen dan Musik Gereja",
+    "queryKey": "jurnalansirupaijurnalpengembanganprofesigurupendidikanagamaislam",
+    "journalName": "JURNAL ANSIRU PAI : Jurnal Pengembangan Profesi Guru Pendidikan Agama Islam",
     "sintaRank": "-",
     "publisher": "-",
     "ojsUrl": "-",
@@ -48,14 +48,6 @@
     "garudaId": "-"
   },
   {
-    "queryKey": "annurjurnalstudiislam",
-    "journalName": "AN NUR: Jurnal Studi Islam",
-    "sintaRank": "-",
-    "publisher": "-",
-    "ojsUrl": "-",
-    "garudaId": "-"
-  },
-  {
     "queryKey": "didaktikareligia",
     "journalName": "DIDAKTIKA RELIGIA",
     "sintaRank": "S3",
@@ -64,11 +56,99 @@
     "garudaId": "25145"
   },
   {
+    "queryKey": "abdicendekiajurnalpengabdianmasyarakat",
+    "journalName": "Abdi Cendekia: Jurnal Pengabdian Masyarakat",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "jurnalelektronikilmukomputerudayana",
+    "journalName": "(JELIKU) Jurnal Elektronik Ilmu Komputer Udayana",
+    "sintaRank": "S5",
+    "publisher": "Universitas Udayana",
+    "ojsUrl": "https://ojs.unud.ac.id/index.php/JLK",
+    "garudaId": "979"
+  },
+  {
     "queryKey": "jurnalpengembanganprofesiguru",
     "journalName": "JURNAL ANSIRU PAI : Jurnal Pengembangan Profesi Guru Pendidikan Agama Islam",
     "sintaRank": "S4",
     "publisher": "Universitas Islam Negeri Sumatera Utara",
     "ojsUrl": "http://jurnal.uinsu.ac.id/index.php/ansiru",
     "garudaId": "15972"
+  },
+  {
+    "queryKey": "inveritatelux",
+    "journalName": "IN VERITATE LUX",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "jurnalabdielkhazanahpemikiranteologipendidikanagamakristendanmusikgereja",
+    "journalName": "Jurnal Abdiel: Khazanah Pemikiran Teologi, Pendidikan Agama Kristen dan Musik Gereja",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "journalofdatascience",
+    "journalName": "\",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "abdidalemjurnalpengabdiankepadamasyarakat",
+    "journalName": "ABDI DALEM: Jurnal Pengabdian Kepada Masyarakat",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "jamastikajurnalmahasiswateknikinformatika",
+    "journalName": "\",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "annurjurnalstudiislam",
+    "journalName": "AN NUR: Jurnal Studi Islam",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "publikjurnaladministrasipublik",
+    "journalName": "@-Publik: Jurnal Administrasi Publik",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "anilislamjurnalkebudayaandanilmukeislaman",
+    "journalName": "'Anil Islam: Jurnal Kebudayaan dan Ilmu Keislaman",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "islamnusantarajournalforthestudyofislamichistoryandculture",
+    "journalName": "ISLAM NUSANTARA: Journal for the Study of Islamic History and Culture",
+    "sintaRank": "S3",
+    "publisher": "Universitas Nahdlatul Ulama Indonesia",
+    "ojsUrl": "https://journal.unusia.ac.id/index.php/ISLAMNUSANTARA",
+    "garudaId": "21871"
   }
 ]

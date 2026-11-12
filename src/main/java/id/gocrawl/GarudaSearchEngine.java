@@ -191,9 +191,23 @@ public final class GarudaSearchEngine {
                 }
                 String targetId = GarudaSubject.resolveSubjectId(options.subjectScopeId());
                 if (j != null) {
-                    boolean match = (targetId != null && targetId.equals(j.subjectId()))
-                            || j.subjectName().equalsIgnoreCase(options.subjectScopeId())
-                            || j.subjectName().toLowerCase(Locale.ROOT).contains(options.subjectScopeId().toLowerCase(Locale.ROOT));
+                    boolean match = false;
+                    if (targetId != null) {
+                        for (String part : j.subjectId().split(",")) {
+                            if (part.trim().equals(targetId)) {
+                                match = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!match) {
+                        String q = options.subjectScopeId().toLowerCase(Locale.ROOT).trim();
+                        if (j.subjectName() != null && j.subjectName().toLowerCase(Locale.ROOT).contains(q)) {
+                            match = true;
+                        } else if (j.coreSubject() != null && j.coreSubject().toLowerCase(Locale.ROOT).contains(q)) {
+                            match = true;
+                        }
+                    }
                     if (!match) {
                         continue;
                     }
