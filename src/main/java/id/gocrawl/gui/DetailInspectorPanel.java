@@ -359,7 +359,7 @@ public class DetailInspectorPanel extends JPanel {
             protected Boolean doInBackground() throws Exception {
                 Document doc = Jsoup.connect(currentArticle.url())
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) GoCrawl PDF Downloader")
-                        .timeout(15000)
+                        .timeout(5000)
                         .followRedirects(true)
                         .get();
 

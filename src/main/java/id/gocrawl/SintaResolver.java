@@ -23,7 +23,7 @@ public final class SintaResolver {
 
     private static final String SINTA_BASE_URL = "https://sinta.kemdiktisaintek.go.id/journals?q=";
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-    private static final int TIMEOUT_MS = 6000;
+    private static final int TIMEOUT_MS = 3500;
     private static final Pattern SINTA_RANK_PATTERN = Pattern.compile("(?i)\\b(S[1-6]|Scopus(?:\\s+[Qq][1-4])?)\\b");
     private static final Path CACHE_FILE = Path.of("data", "sinta_cache.json");
 

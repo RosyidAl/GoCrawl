@@ -19,8 +19,8 @@ public final class GarudaHarvester {
 
     private static final String BASE_URL = "https://garuda.kemdiktisaintek.go.id";
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
-    private static final int TIMEOUT_MS = 25000;
-    private static final int POLITE_DELAY_MS = 300;
+    private static final int TIMEOUT_MS = 8000;
+    private static final int POLITE_DELAY_MS = 50;
 
     private static final Pattern ISSN_PATTERN = Pattern.compile("ISSN\\s*:\\s*([^\\s\\u00a0<]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern EISSN_PATTERN = Pattern.compile("EISSN\\s*:\\s*([^\\s\\u00a0<]+)", Pattern.CASE_INSENSITIVE);
@@ -244,7 +244,7 @@ public final class GarudaHarvester {
                         .get();
             } catch (IOException e) {
                 if (i < maxRetries) {
-                    sleep(800 * i);
+                    sleep(200 * i);
                     continue;
                 }
                 throw e;

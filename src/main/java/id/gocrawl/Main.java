@@ -33,13 +33,13 @@ public final class Main {
             return HttpClient.newBuilder()
                     .version(HttpClient.Version.HTTP_1_1)
                     .sslContext(sslContext)
-                    .connectTimeout(Duration.ofSeconds(20))
+                    .connectTimeout(Duration.ofSeconds(8))
                     .followRedirects(HttpClient.Redirect.NORMAL)
                     .build();
         } catch (Exception e) {
             return HttpClient.newBuilder()
                     .version(HttpClient.Version.HTTP_1_1)
-                    .connectTimeout(Duration.ofSeconds(20))
+                    .connectTimeout(Duration.ofSeconds(8))
                     .followRedirects(HttpClient.Redirect.NORMAL)
                     .build();
         }
@@ -150,7 +150,7 @@ public final class Main {
                     System.out.println("[AKHIR HASIL] Tidak ada halaman lagi dari Portal Garuda.");
                     break;
                 }
-                Thread.sleep(300);
+                Thread.sleep(50);
             }
 
             writeCsv(options.output.resolve("articles.csv"), collected);
@@ -438,7 +438,7 @@ public final class Main {
             int maxRetries = 2;
             for (int attempt = 1; attempt <= maxRetries; attempt++) {
                 try {
-                    HttpRequest req = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(25))
+                    HttpRequest req = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(8))
                             .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
                             .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
                             .header("Accept-Language", "en-US,en;q=0.9,id;q=0.8")
@@ -449,7 +449,7 @@ public final class Main {
                     }
                     if (response.statusCode() < 200 || response.statusCode() >= 300) {
                         if (attempt < maxRetries) {
-                            Thread.sleep(600);
+                            Thread.sleep(150);
                             continue;
                         }
                         throw new IOException("HTTP " + response.statusCode() + " saat membuka " + uri);
@@ -458,11 +458,11 @@ public final class Main {
                     if (count == 1 || count % 5 == 0) {
                         System.out.println("[PROGRES] " + journalName(base) + ": " + count + " halaman; " + uri);
                     }
-                    Thread.sleep(200);
+                    Thread.sleep(50);
                     return response.body();
                 } catch (Exception e) {
                     if (attempt < maxRetries && isRetryable(e)) {
-                        Thread.sleep(800);
+                        Thread.sleep(200);
                         continue;
                     }
                     throw e;
