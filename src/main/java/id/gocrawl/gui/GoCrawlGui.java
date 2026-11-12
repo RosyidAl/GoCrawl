@@ -10,6 +10,7 @@ import java.awt.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,15 +40,21 @@ public class GoCrawlGui extends JFrame {
     private ArticleTablePanel tablePanel;
     private DetailInspectorPanel inspectorPanel;
 
-    private SwingWorker<Void, Article> currentSearchWorker;
+    private SwingWorker<List<Article>, String> currentSearchWorker;
     private final List<Article> masterArticleList = new ArrayList<>();
     private final Map<Integer, List<Article>> pageCache = new ConcurrentHashMap<>();
+    private final Map<Integer, GarudaSearchEngine.PageResult> garudaRawPageCache = new ConcurrentHashMap<>();
+    private final List<Article> sintaFilteredPool = Collections.synchronizedList(new ArrayList<>());
+    private int sintaLastGarudaPageScanned = 0;
     private final GarudaSearchEngine searchEngine = new GarudaSearchEngine();
 
     // State Paginasi Pencarian Garuda
+    private int activePageSize = 25; // Default 25 baris untuk mengisi penuh ruang vertikal tabel
     private int currentSearchPage = 1;
     private int totalSearchPages = 1;
     private int totalRecordsFound = 0;
+    private int totalGarudaPages = 1;
+    private int totalGarudaRecords = 0;
     private String activeKeyword = "";
     private String activeSintaRank = "ALL";
     private Integer activeFromYear = null;
@@ -156,6 +163,17 @@ public class GoCrawlGui extends JFrame {
         inspectorPanel = new DetailInspectorPanel(catalog);
         tablePanel = new ArticleTablePanel(catalog, inspectorPanel::setArticle);
         tablePanel.setOnPageChange(this::loadPage);
+        tablePanel.setOnPageSizeChange(newSize -> {
+            if (newSize == activePageSize) return;
+            this.activePageSize = newSize;
+            this.pageCache.clear();
+            if (totalRecordsFound > 0) {
+                this.totalSearchPages = Math.max(1, (int) Math.ceil((double) totalRecordsFound / activePageSize));
+            }
+            if (activeKeyword != null && !activeKeyword.isBlank()) {
+                loadPage(1);
+            }
+        });
 
         JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tablePanel, inspectorPanel);
         mainSplit.setResizeWeight(0.68);
@@ -214,6 +232,7 @@ public class GoCrawlGui extends JFrame {
         SintaFilterItem selectedSinta = (SintaFilterItem) sintaComboBox.getSelectedItem();
 
         // Simpan parameter aktif untuk paginasi berikutnya
+        this.activePageSize = tablePanel.getPageSize();
         this.activeKeyword = keyword;
         this.activeSintaRank = selectedSinta != null ? selectedSinta.id() : "ALL";
         this.activeFromYear = fromYear;
@@ -221,8 +240,13 @@ public class GoCrawlGui extends JFrame {
         this.currentSearchPage = 1;
         this.totalSearchPages = 1;
         this.totalRecordsFound = 0;
+        this.totalGarudaPages = 1;
+        this.totalGarudaRecords = 0;
+        this.sintaLastGarudaPageScanned = 0;
+        this.sintaFilteredPool.clear();
 
         // Reset cache dan tabel untuk pencarian baru
+        garudaRawPageCache.clear();
         pageCache.clear();
         masterArticleList.clear();
         tablePanel.clearArticles();
@@ -256,24 +280,132 @@ public class GoCrawlGui extends JFrame {
         crawlBtn.setText("■ Stop");
         crawlBtn.setForeground(Color.RED);
         tablePanel.setPaginationEnabled(false);
-        tablePanel.setProgress(true, "Memuat Halaman " + page + (totalSearchPages > 1 ? " dari " + totalSearchPages : "") + " dari Portal Garuda...");
+        tablePanel.setProgress(true, "Memuat Halaman " + page + (totalSearchPages > 1 ? " dari " + totalSearchPages : "") + " (" + activePageSize + " artikel/hal)...");
 
-        currentSearchWorker = new SwingWorker<>() {
-            private GarudaSearchEngine.PageResult pageResult;
+        currentSearchWorker = new SwingWorker<List<Article>, String>() {
+            @Override
+            protected List<Article> doInBackground() throws Exception {
+                boolean isAllSinta = "ALL".equalsIgnoreCase(activeSintaRank);
+
+                if (isAllSinta) {
+                    // Mode Standar (Semua SINTA): Peta indeks ke halaman Portal Garuda (10 item per halaman portal)
+                    int startIdx = (page - 1) * activePageSize;
+                    int endIdx = startIdx + activePageSize;
+
+                    int gStart = (startIdx / 10) + 1;
+                    int gEnd = ((endIdx - 1) / 10) + 1;
+                    if (totalGarudaPages > 1) {
+                        gEnd = Math.min(gEnd, totalGarudaPages);
+                    }
+
+                    for (int g = gStart; g <= gEnd; g++) {
+                        if (isCancelled()) break;
+                        if (!garudaRawPageCache.containsKey(g)) {
+                            publish("Mengambil halaman Garuda ke-" + g + "...");
+                            GarudaSearchEngine.SearchOptions opts = new GarudaSearchEngine.SearchOptions(
+                                    activeKeyword,
+                                    "ALL",
+                                    "ALL",
+                                    activeFromYear,
+                                    activeToYear,
+                                    g
+                            );
+                            GarudaSearchEngine.PageResult res = searchEngine.searchPage(opts, catalog);
+                            garudaRawPageCache.put(g, res);
+                            totalGarudaPages = Math.max(1, res.totalPages());
+                            totalGarudaRecords = res.totalRecords();
+                            totalRecordsFound = totalGarudaRecords;
+                            totalSearchPages = Math.max(1, (int) Math.ceil((double) totalRecordsFound / activePageSize));
+                            if (g == gStart) {
+                                gEnd = Math.min(((endIdx - 1) / 10) + 1, totalGarudaPages);
+                            }
+                            if (!res.hasMore() || res.articles().isEmpty()) {
+                                break;
+                            }
+                        }
+                    }
+
+                    // Kumpulkan artikel untuk rentang halaman UI ini
+                    List<Article> resultList = new ArrayList<>();
+                    if (totalRecordsFound > 0) {
+                        endIdx = Math.min(endIdx, totalRecordsFound);
+                    }
+                    for (int g = gStart; g <= gEnd; g++) {
+                        GarudaSearchEngine.PageResult gRes = garudaRawPageCache.get(g);
+                        if (gRes == null) continue;
+                        List<Article> gList = gRes.articles();
+                        int gBase = (g - 1) * 10;
+                        for (int i = 0; i < gList.size(); i++) {
+                            int globalIdx = gBase + i;
+                            if (globalIdx >= startIdx && globalIdx < endIdx) {
+                                resultList.add(gList.get(i));
+                            }
+                        }
+                    }
+                    return resultList;
+                } else {
+                    // Mode Filter SINTA: Pindai halaman Garuda secara dinamis hingga kuota per-halaman terpenuhi
+                    int targetQuota = page * activePageSize;
+
+                    while (sintaFilteredPool.size() < targetQuota) {
+                        if (isCancelled()) break;
+                        int nextG = sintaLastGarudaPageScanned + 1;
+                        if (totalGarudaPages > 1 && nextG > totalGarudaPages) {
+                            break;
+                        }
+
+                        publish("Memindai Garuda hal-" + nextG + " (" + sintaFilteredPool.size() + " artikel SINTA terkumpul)...");
+
+                        GarudaSearchEngine.PageResult res;
+                        if (garudaRawPageCache.containsKey(nextG)) {
+                            res = garudaRawPageCache.get(nextG);
+                        } else {
+                            GarudaSearchEngine.SearchOptions opts = new GarudaSearchEngine.SearchOptions(
+                                    activeKeyword,
+                                    "ALL",
+                                    activeSintaRank,
+                                    activeFromYear,
+                                    activeToYear,
+                                    nextG
+                            );
+                            res = searchEngine.searchPage(opts, catalog);
+                            garudaRawPageCache.put(nextG, res);
+                        }
+
+                        sintaLastGarudaPageScanned = nextG;
+                        totalGarudaPages = Math.max(1, res.totalPages());
+                        totalGarudaRecords = res.totalRecords();
+                        sintaFilteredPool.addAll(res.articles());
+
+                        if (!res.hasMore() || (res.articles().isEmpty() && nextG >= totalGarudaPages)) {
+                            break;
+                        }
+                    }
+
+                    if (sintaLastGarudaPageScanned >= totalGarudaPages) {
+                        totalRecordsFound = sintaFilteredPool.size();
+                        totalSearchPages = Math.max(1, (int) Math.ceil((double) totalRecordsFound / activePageSize));
+                    } else {
+                        double ratio = (double) sintaFilteredPool.size() / Math.max(1, sintaLastGarudaPageScanned * 10);
+                        totalRecordsFound = Math.max(sintaFilteredPool.size(), (int) (totalGarudaRecords * ratio));
+                        totalSearchPages = Math.max(page, (int) Math.ceil((double) totalRecordsFound / activePageSize));
+                    }
+
+                    int startIdx = (page - 1) * activePageSize;
+                    int endIdx = Math.min(sintaFilteredPool.size(), startIdx + activePageSize);
+                    if (startIdx < sintaFilteredPool.size()) {
+                        return new ArrayList<>(sintaFilteredPool.subList(startIdx, endIdx));
+                    } else {
+                        return Collections.emptyList();
+                    }
+                }
+            }
 
             @Override
-            protected Void doInBackground() throws Exception {
-                GarudaSearchEngine.SearchOptions opts = new GarudaSearchEngine.SearchOptions(
-                        activeKeyword,
-                        "ALL",
-                        activeSintaRank,
-                        activeFromYear,
-                        activeToYear,
-                        page
-                );
-
-                pageResult = searchEngine.searchPage(opts, catalog);
-                return null;
+            protected void process(List<String> chunks) {
+                if (!chunks.isEmpty()) {
+                    tablePanel.setProgress(true, chunks.get(chunks.size() - 1));
+                }
             }
 
             @Override
@@ -288,33 +420,27 @@ public class GoCrawlGui extends JFrame {
                 }
 
                 try {
-                    get();
-                    if (pageResult != null) {
-                        currentSearchPage = pageResult.currentPage();
-                        totalSearchPages = Math.max(1, pageResult.totalPages());
-                        totalRecordsFound = pageResult.totalRecords();
+                    List<Article> articles = get();
+                    currentSearchPage = page;
+                    pageCache.put(page, articles);
 
-                        List<Article> articles = pageResult.articles();
-                        pageCache.put(page, articles);
-
-                        // Kumpulkan ke master list untuk ekspor bibliografi (deduplikasi berdasarkan URL/DOI)
-                        for (Article a : articles) {
-                            boolean exists = masterArticleList.stream().anyMatch(m ->
-                                    (!m.url().isBlank() && m.url().equalsIgnoreCase(a.url())) ||
-                                    (!m.doi().isBlank() && m.doi().equalsIgnoreCase(a.doi())) ||
-                                    m.title().equalsIgnoreCase(a.title()));
-                            if (!exists) {
-                                masterArticleList.add(a);
-                            }
+                    // Kumpulkan ke master list untuk ekspor bibliografi (deduplikasi berdasarkan URL/DOI)
+                    for (Article a : articles) {
+                        boolean exists = masterArticleList.stream().anyMatch(m ->
+                                (!m.url().isBlank() && m.url().equalsIgnoreCase(a.url())) ||
+                                (!m.doi().isBlank() && m.doi().equalsIgnoreCase(a.doi())) ||
+                                m.title().equalsIgnoreCase(a.title()));
+                        if (!exists) {
+                            masterArticleList.add(a);
                         }
-
-                        tablePanel.setArticles(articles);
-                        tablePanel.updatePagination(currentSearchPage, totalSearchPages, totalRecordsFound, articles.size());
-                        tablePanel.setProgress(false, "Halaman " + currentSearchPage + " dari " + totalSearchPages +
-                                " — Menampilkan " + articles.size() + " artikel (Total: " + totalRecordsFound + " dokumen di Garuda)");
-
-                        saveSearchOutput();
                     }
+
+                    tablePanel.setArticles(articles);
+                    tablePanel.updatePagination(currentSearchPage, totalSearchPages, totalRecordsFound, articles.size());
+                    tablePanel.setProgress(false, "Halaman " + currentSearchPage + " dari " + totalSearchPages +
+                            " — Menampilkan " + articles.size() + " artikel (Total: " + totalRecordsFound + " dokumen di Garuda)");
+
+                    saveSearchOutput();
                 } catch (Exception e) {
                     tablePanel.setProgress(false, "Gagal memuat Halaman " + page + ": " + e.getMessage());
                 }

@@ -50,6 +50,7 @@ public class ArticleTablePanel extends JPanel {
     private final JButton lastPageBtn = new JButton("⏭");
     private final JTextField jumpPageField = new JTextField(3);
     private final JButton jumpBtn = new JButton("Buka");
+    private final JComboBox<Integer> pageSizeComboBox = new JComboBox<>(new Integer[]{10, 20, 25, 50});
 
     private final JProgressBar progressBar = new JProgressBar();
     private final JLabel progressLabel = new JLabel("");
@@ -58,6 +59,7 @@ public class ArticleTablePanel extends JPanel {
     private final JournalCatalog catalog;
     private final Consumer<Article> onArticleSelected;
     private Consumer<Integer> onPageChange;
+    private Consumer<Integer> onPageSizeChange;
 
     private int currentPage = 1;
     private int totalPages = 1;
@@ -152,15 +154,28 @@ public class ArticleTablePanel extends JPanel {
         jumpBtn.setPreferredSize(new Dimension(65, 26));
         jumpBtn.addActionListener(e -> triggerJump());
 
+        pageSizeComboBox.setPreferredSize(new Dimension(58, 26));
+        pageSizeComboBox.setSelectedItem(25);
+        pageSizeComboBox.setToolTipText("Jumlah artikel yang ditampilkan per halaman (Default: 25)");
+        pageSizeComboBox.addActionListener(e -> {
+            if (onPageSizeChange != null) {
+                onPageSizeChange.accept(getPageSize());
+            }
+        });
+
         centerBox.add(firstPageBtn);
         centerBox.add(prevPageBtn);
         centerBox.add(pageInfoLabel);
         centerBox.add(nextPageBtn);
         centerBox.add(lastPageBtn);
-        centerBox.add(Box.createHorizontalStrut(8));
+        centerBox.add(Box.createHorizontalStrut(6));
         centerBox.add(new JLabel("Ke:"));
         centerBox.add(jumpPageField);
         centerBox.add(jumpBtn);
+        centerBox.add(Box.createHorizontalStrut(8));
+        centerBox.add(new JLabel("Tampilkan:"));
+        centerBox.add(pageSizeComboBox);
+        centerBox.add(new JLabel("/ hal"));
         bottomPanel.add(centerBox, BorderLayout.CENTER);
 
         JPanel progressBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
@@ -366,11 +381,25 @@ public class ArticleTablePanel extends JPanel {
             lastPageBtn.setEnabled(enabled && currentPage < totalPages);
             jumpPageField.setEnabled(enabled);
             jumpBtn.setEnabled(enabled);
+            pageSizeComboBox.setEnabled(enabled);
         });
     }
 
     public void setOnPageChange(Consumer<Integer> callback) {
         this.onPageChange = callback;
+    }
+
+    public void setOnPageSizeChange(Consumer<Integer> callback) {
+        this.onPageSizeChange = callback;
+    }
+
+    public int getPageSize() {
+        Object item = pageSizeComboBox.getSelectedItem();
+        return item instanceof Integer ? (Integer) item : 25;
+    }
+
+    public void setPageSize(int size) {
+        SwingUtilities.invokeLater(() -> pageSizeComboBox.setSelectedItem(size));
     }
 
     public int getCurrentPage() {

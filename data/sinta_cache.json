@@ -16,6 +16,14 @@
     "garudaId": "-"
   },
   {
+    "queryKey": "lisanalhaljurnalpengembanganpemikirandankebudayaan",
+    "journalName": "Lisan Al-Hal: Jurnal Pengembangan Pemikiran dan Kebudayaan",
+    "sintaRank": "S4",
+    "publisher": "LP2M Universitas Ibrahimy Situbondo",
+    "ojsUrl": "https://journal.ibrahimy.ac.id/index.php/lisanalhal/about",
+    "garudaId": "15869"
+  },
+  {
     "queryKey": "tamaddun",
     "journalName": "Jurnal Tamaddun",
     "sintaRank": "S4",
@@ -38,6 +46,22 @@
     "publisher": "-",
     "ojsUrl": "-",
     "garudaId": "-"
+  },
+  {
+    "queryKey": "attarbawijurnalpendidikansosialdankebudayaan",
+    "journalName": "At-Tarbawi : Jurnal Pendidikan, Sosial dan Kebudayaan",
+    "sintaRank": "S2",
+    "publisher": "Institut Agama Islam Negeri Zawiyah Cot Kala Langsa",
+    "ojsUrl": "https://journal.iainlangsa.ac.id/index.php/tarbawi",
+    "garudaId": "18091"
+  },
+  {
+    "queryKey": "jurnalaliqtishad",
+    "journalName": "Al-Iqtishad : Jurnal Ilmu Ekonomi Syariah (Journal of Islamic Economics)",
+    "sintaRank": "S2",
+    "publisher": "Universitas Islam Negeri Syarif Hidayatullah Jakarta",
+    "ojsUrl": "https://journal.uinjkt.ac.id/index.php/iqtishad/index",
+    "garudaId": "6183"
   },
   {
     "queryKey": "abdidalemjurnalpengabdiankepadamasyarakat",
@@ -112,6 +136,14 @@
     "garudaId": "8800"
   },
   {
+    "queryKey": "jurnalhakam",
+    "journalName": "Hakam : Jurnal Kajian Hukum Islam dan Hukum Ekonomi Islam",
+    "sintaRank": "S2",
+    "publisher": "Universitas Nurul Jadid Paiton Probolinggo",
+    "ojsUrl": "https://ejournal.unuja.ac.id/index.php/hakam",
+    "garudaId": "24800"
+  },
+  {
     "queryKey": "ajamiyjurnalbahasadansastraarab",
     "journalName": "'A Jamiy: Jurnal Bahasa dan Sastra Arab",
     "sintaRank": "-",
@@ -158,6 +190,14 @@
     "publisher": "-",
     "ojsUrl": "-",
     "garudaId": "-"
+  },
+  {
+    "queryKey": "kodifikasia",
+    "journalName": "KODIFIKASIA: Jurnal Penelitian Islam",
+    "sintaRank": "S4",
+    "publisher": "Universitas Islam Negeri Kiai Ageng Muhammad Besari Ponorogo",
+    "ojsUrl": "https://jurnal.iainponorogo.ac.id/index.php/kodifikasia/index",
+    "garudaId": "7254"
   },
   {
     "queryKey": "yupahistoricalstudiesjournal",
@@ -224,6 +264,14 @@
     "garudaId": "-"
   },
   {
+    "queryKey": "jurnalstudiagamadanmasyarakat",
+    "journalName": "Jurnal Studi Agama dan Masyarakat",
+    "sintaRank": "S2",
+    "publisher": "Universitas Islam Negeri Palangka Raya",
+    "ojsUrl": "http://e-journal.iain-palangkaraya.ac.id/index.php/jsam",
+    "garudaId": "8978"
+  },
+  {
     "queryKey": "jurnalpendidikandankonseling",
     "journalName": "Jurnal Psikologi Pendidikan dan Konseling: Jurnal Kajian Psikologi Pendidikan dan Bimbingan Konseling",
     "sintaRank": "S3",
@@ -270,6 +318,14 @@
     "publisher": "Pusat Penelitian Kemasyarakatan dan Kebudayaan, LIPI",
     "ojsUrl": "http://jmb.lipi.go.id/index.php/jmb",
     "garudaId": "14662"
+  },
+  {
+    "queryKey": "endogamijurnalilmiahkajianantropologi",
+    "journalName": "Endogami: Jurnal Ilmiah Kajian Antropologi",
+    "sintaRank": "S3",
+    "publisher": "Program Studi Antropologi Universitas Diponegoro",
+    "ojsUrl": "https://ejournal.undip.ac.id/index.php/endogami/issue/archive",
+    "garudaId": "12617"
   },
   {
     "queryKey": "ieraislamiceducationandresearchacademy",
@@ -398,6 +454,14 @@
     "publisher": "-",
     "ojsUrl": "-",
     "garudaId": "-"
+  },
+  {
+    "queryKey": "supremasijurnalpemikiranpenelitianilmuilmusosialhukumdanpengajarannya",
+    "journalName": "Jurnal Supremasi",
+    "sintaRank": "S4",
+    "publisher": "Universitas Islam Balitar Blitar",
+    "ojsUrl": "https://ejournal.unisbablitar.ac.id/index.php/supremasi",
+    "garudaId": "18885"
   },
   {
     "queryKey": "attoriolong",
