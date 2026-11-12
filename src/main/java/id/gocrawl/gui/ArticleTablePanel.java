@@ -31,7 +31,7 @@ import java.util.function.Consumer;
  */
 public class ArticleTablePanel extends JPanel {
 
-    private final String[] COLUMN_NAMES = {"Judul Artikel", "Jurnal", "Asal / Penerbit", "Penulis", "Tahun", "DOI"};
+    private final String[] COLUMN_NAMES = {"Judul Artikel", "Jurnal", "SINTA", "Asal / Penerbit", "Penulis", "Tahun", "DOI"};
     private final DefaultTableModel tableModel = new DefaultTableModel(COLUMN_NAMES, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -43,12 +43,25 @@ public class ArticleTablePanel extends JPanel {
     private final JTextField filterField = new JTextField(18);
 
     private final JLabel countLabel = new JLabel("Menampilkan: 0 artikel");
+    private final JButton firstPageBtn = new JButton("⏮");
+    private final JButton prevPageBtn = new JButton("◀ Prev");
+    private final JLabel pageInfoLabel = new JLabel("Halaman 1 / 1");
+    private final JButton nextPageBtn = new JButton("Next ▶");
+    private final JButton lastPageBtn = new JButton("⏭");
+    private final JTextField jumpPageField = new JTextField(3);
+    private final JButton jumpBtn = new JButton("Buka");
+
     private final JProgressBar progressBar = new JProgressBar();
     private final JLabel progressLabel = new JLabel("");
 
     private final List<Article> allArticles = Collections.synchronizedList(new ArrayList<>());
     private final JournalCatalog catalog;
     private final Consumer<Article> onArticleSelected;
+    private Consumer<Integer> onPageChange;
+
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private int totalRecords = 0;
 
     public ArticleTablePanel(JournalCatalog catalog, Consumer<Article> onArticleSelected) {
         this.catalog = catalog;
@@ -86,11 +99,17 @@ public class ArticleTablePanel extends JPanel {
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setRowHeight(26);
         table.getColumnModel().getColumn(0).setPreferredWidth(320); // Judul Artikel
-        table.getColumnModel().getColumn(1).setPreferredWidth(170); // Jurnal
-        table.getColumnModel().getColumn(2).setPreferredWidth(160); // Asal / Penerbit
-        table.getColumnModel().getColumn(3).setPreferredWidth(130); // Penulis
-        table.getColumnModel().getColumn(4).setPreferredWidth(55);  // Tahun
-        table.getColumnModel().getColumn(5).setPreferredWidth(110); // DOI
+        table.getColumnModel().getColumn(1).setPreferredWidth(160); // Jurnal
+        table.getColumnModel().getColumn(2).setPreferredWidth(60);  // SINTA
+        table.getColumnModel().getColumn(3).setPreferredWidth(150); // Asal / Penerbit
+        table.getColumnModel().getColumn(4).setPreferredWidth(120); // Penulis
+        table.getColumnModel().getColumn(5).setPreferredWidth(55);  // Tahun
+        table.getColumnModel().getColumn(6).setPreferredWidth(100); // DOI
+
+        javax.swing.table.DefaultTableCellRenderer centerRenderer = new javax.swing.table.DefaultTableCellRenderer();
+        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
+        table.getColumnModel().getColumn(2).setCellRenderer(centerRenderer);
+        table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
 
         JScrollPane tableScroll = new JScrollPane(table);
         add(tableScroll, BorderLayout.CENTER);
@@ -99,6 +118,50 @@ public class ArticleTablePanel extends JPanel {
         JPanel bottomPanel = new JPanel(new BorderLayout(8, 0));
         bottomPanel.setBorder(new EmptyBorder(4, 4, 4, 4));
         bottomPanel.add(countLabel, BorderLayout.WEST);
+
+        JPanel centerBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
+
+        firstPageBtn.setToolTipText("Halaman Pertama (1)");
+        firstPageBtn.setPreferredSize(new Dimension(42, 26));
+        firstPageBtn.setEnabled(false);
+        firstPageBtn.addActionListener(e -> changePage(1));
+
+        prevPageBtn.setToolTipText("Halaman Sebelumnya");
+        prevPageBtn.setPreferredSize(new Dimension(80, 26));
+        prevPageBtn.setEnabled(false);
+        prevPageBtn.addActionListener(e -> changePage(currentPage - 1));
+
+        pageInfoLabel.setFont(pageInfoLabel.getFont().deriveFont(Font.BOLD, 12f));
+        pageInfoLabel.setBorder(new EmptyBorder(0, 6, 0, 6));
+
+        nextPageBtn.setToolTipText("Halaman Berikutnya");
+        nextPageBtn.setPreferredSize(new Dimension(80, 26));
+        nextPageBtn.setEnabled(false);
+        nextPageBtn.addActionListener(e -> changePage(currentPage + 1));
+
+        lastPageBtn.setToolTipText("Halaman Terakhir");
+        lastPageBtn.setPreferredSize(new Dimension(42, 26));
+        lastPageBtn.setEnabled(false);
+        lastPageBtn.addActionListener(e -> changePage(totalPages));
+
+        jumpPageField.setHorizontalAlignment(JTextField.CENTER);
+        jumpPageField.setPreferredSize(new Dimension(44, 26));
+        jumpPageField.setToolTipText("Ketik nomor halaman lalu tekan Enter atau klik Buka");
+        jumpPageField.addActionListener(e -> triggerJump());
+
+        jumpBtn.setPreferredSize(new Dimension(65, 26));
+        jumpBtn.addActionListener(e -> triggerJump());
+
+        centerBox.add(firstPageBtn);
+        centerBox.add(prevPageBtn);
+        centerBox.add(pageInfoLabel);
+        centerBox.add(nextPageBtn);
+        centerBox.add(lastPageBtn);
+        centerBox.add(Box.createHorizontalStrut(8));
+        centerBox.add(new JLabel("Ke:"));
+        centerBox.add(jumpPageField);
+        centerBox.add(jumpBtn);
+        bottomPanel.add(centerBox, BorderLayout.CENTER);
 
         JPanel progressBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         progressLabel.setFont(progressLabel.getFont().deriveFont(11f));
@@ -212,9 +275,11 @@ public class ArticleTablePanel extends JPanel {
             allArticles.add(article);
             String firstAuthor = article.authors() != null ? article.authors().split(";")[0].strip() : "-";
             String origin = catalog != null ? catalog.resolveOrigin(article.url(), article.journal()) : "-";
+            String sinta = catalog != null ? catalog.resolveSintaRank(article.url(), article.journal()) : "-";
             tableModel.addRow(new Object[]{
                     article.title(),
                     article.journal(),
+                    sinta,
                     origin,
                     firstAuthor,
                     article.year(),
@@ -233,9 +298,11 @@ public class ArticleTablePanel extends JPanel {
                 for (Article a : articles) {
                     String firstAuthor = a.authors() != null ? a.authors().split(";")[0].strip() : "-";
                     String origin = catalog != null ? catalog.resolveOrigin(a.url(), a.journal()) : "-";
+                    String sinta = catalog != null ? catalog.resolveSintaRank(a.url(), a.journal()) : "-";
                     tableModel.addRow(new Object[]{
                             a.title(),
                             a.journal(),
+                            sinta,
                             origin,
                             firstAuthor,
                             a.year(),
@@ -245,6 +312,73 @@ public class ArticleTablePanel extends JPanel {
             }
             updateCountLabel();
         });
+    }
+
+    private void triggerJump() {
+        String text = jumpPageField.getText().strip();
+        if (text.isEmpty()) return;
+        try {
+            int p = Integer.parseInt(text);
+            if (p >= 1 && p <= Math.max(1, totalPages)) {
+                changePage(p);
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "Nomor halaman harus di antara 1 dan " + Math.max(1, totalPages) + ".",
+                        "Paginasi Halaman",
+                        JOptionPane.WARNING_MESSAGE);
+            }
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Masukkan angka nomor halaman yang valid.",
+                    "Paginasi Halaman",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void changePage(int targetPage) {
+        if (targetPage < 1 || (totalPages > 0 && targetPage > totalPages)) return;
+        if (onPageChange != null) {
+            onPageChange.accept(targetPage);
+        }
+    }
+
+    public void updatePagination(int page, int totalPgs, int totalRecs, int currentCount) {
+        this.currentPage = page;
+        this.totalPages = Math.max(1, totalPgs);
+        this.totalRecords = totalRecs;
+
+        SwingUtilities.invokeLater(() -> {
+            pageInfoLabel.setText("Halaman " + currentPage + " / " + totalPages);
+            firstPageBtn.setEnabled(currentPage > 1);
+            prevPageBtn.setEnabled(currentPage > 1);
+            nextPageBtn.setEnabled(currentPage < totalPages);
+            lastPageBtn.setEnabled(currentPage < totalPages);
+            jumpPageField.setText(String.valueOf(currentPage));
+            countLabel.setText("Hal " + currentPage + " (" + currentCount + " artikel) — Total: " + totalRecs + " dokumen");
+        });
+    }
+
+    public void setPaginationEnabled(boolean enabled) {
+        SwingUtilities.invokeLater(() -> {
+            firstPageBtn.setEnabled(enabled && currentPage > 1);
+            prevPageBtn.setEnabled(enabled && currentPage > 1);
+            nextPageBtn.setEnabled(enabled && currentPage < totalPages);
+            lastPageBtn.setEnabled(enabled && currentPage < totalPages);
+            jumpPageField.setEnabled(enabled);
+            jumpBtn.setEnabled(enabled);
+        });
+    }
+
+    public void setOnPageChange(Consumer<Integer> callback) {
+        this.onPageChange = callback;
+    }
+
+    public int getCurrentPage() {
+        return currentPage;
+    }
+
+    public int getTotalPages() {
+        return totalPages;
     }
 
     public void clearArticles() {

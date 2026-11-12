@@ -58,8 +58,76 @@ public final class JournalCatalog {
         return null;
     }
 
+    public synchronized Journal findByName(String name) {
+        if (name == null || name.isBlank() || name.equals("-")) return null;
+        String clean = normalizeForMatch(name);
+        if (clean.isBlank()) return null;
+        for (Journal j : journalsById.values()) {
+            if (j.name() == null || j.name().isBlank()) continue;
+            String jClean = normalizeForMatch(j.name());
+            if (jClean.equals(clean) || (jClean.length() >= 5 && clean.length() >= 5 && (jClean.contains(clean) || clean.contains(jClean)))) {
+                return j;
+            }
+        }
+        return null;
+    }
+
+    private static String normalizeForMatch(String s) {
+        return s.toLowerCase(Locale.ROOT)
+                .replaceAll("\\(.*?\\)", "")
+                .replaceAll("[^a-z0-9]", "")
+                .strip();
+    }
+
+    public synchronized String resolveSintaRank(String url, String journalName) {
+        Journal j = findByUrlOrHost(url);
+        if (j == null && journalName != null) {
+            j = findByName(journalName);
+        }
+        if (j != null && j.sintaRank() != null && !j.sintaRank().isBlank() && !j.sintaRank().equals("-")) {
+            return j.sintaRank();
+        }
+        return "-";
+    }
+
+    public synchronized String resolveSubject(String url, String journalName) {
+        Journal j = findByUrlOrHost(url);
+        if (j == null && journalName != null) {
+            j = findByName(journalName);
+        }
+        if (j != null && j.subjectName() != null && !j.subjectName().isBlank() && !j.subjectName().equals("-")) {
+            return j.subjectName();
+        }
+        return "-";
+    }
+
+    public static boolean matchesSinta(String rank, String minFilter) {
+        if (minFilter == null || minFilter.isBlank() || minFilter.equalsIgnoreCase("ALL")) {
+            return true;
+        }
+        if (rank == null || rank.isBlank() || rank.equals("-")) {
+            return false;
+        }
+        int rankNum = parseSintaNumber(rank);
+        int filterNum = parseSintaNumber(minFilter);
+        if (rankNum <= 0 || filterNum <= 0) return false;
+        return rankNum <= filterNum;
+    }
+
+    public static int parseSintaNumber(String s) {
+        if (s == null) return -1;
+        Matcher m = Pattern.compile("(?i)s(?:inta)?\\s*([1-6])").matcher(s);
+        if (m.find()) {
+            return Integer.parseInt(m.group(1));
+        }
+        return -1;
+    }
+
     public synchronized String resolveOrigin(String url, String journalName) {
         Journal j = findByUrlOrHost(url);
+        if (j == null && journalName != null) {
+            j = findByName(journalName);
+        }
         if (j != null && j.publisher() != null && !j.publisher().isBlank() && !j.publisher().equals("-")) {
             return j.publisher();
         }
@@ -79,7 +147,7 @@ public final class JournalCatalog {
     }
 
     public synchronized List<Journal> filterBySubject(String subjectIdOrName) {
-        if (subjectIdOrName == null || subjectIdOrName.isBlank()) {
+        if (subjectIdOrName == null || subjectIdOrName.isBlank() || subjectIdOrName.equalsIgnoreCase("ALL")) {
             return allJournals();
         }
         String resolvedId = GarudaSubject.resolveSubjectId(subjectIdOrName);

@@ -66,40 +66,102 @@ public final class Main {
                 GarudaHarvester.harvest(harvestOpts);
                 return;
             }
-            List<URI> targets = readTargets(Path.of("journal.txt"));
-            if (targets.isEmpty()) {
-                throw new IllegalArgumentException("journal.txt tidak berisi URL target.");
-            }
-            Files.createDirectories(options.output);
-            int failures = 0;
-            for (URI target : targets) {
-                String name = journalName(target);
-                System.out.println("[MULAI] " + name + " — " + target);
-                try {
-                    Path folder = options.output.resolve(name);
-                    Files.createDirectories(folder);
-                    List<Article> articles = Collections.synchronizedList(new ArrayList<>());
-                    ArticleSink sink = article -> {
+            if (options.directOjs) {
+                List<URI> targets = readTargets(Path.of("journal.txt"));
+                if (targets.isEmpty()) {
+                    throw new IllegalArgumentException("journal.txt tidak berisi URL target.");
+                }
+                Files.createDirectories(options.output);
+                int failures = 0;
+                for (URI target : targets) {
+                    String name = journalName(target);
+                    System.out.println("[MULAI DIRECT OJS] " + name + " — " + target);
+                    try {
+                        Path folder = options.output.resolve(name);
+                        Files.createDirectories(folder);
+                        List<Article> articles = Collections.synchronizedList(new ArrayList<>());
+                        ArticleSink sink = article -> {
+                            synchronized (articles) {
+                                articles.add(article);
+                                writeCsv(folder.resolve("articles.csv"), articles);
+                                writeJson(folder.resolve("articles.json"), articles);
+                                System.out.println("[COCOK] " + name + ": " + articles.size() + " — " + article.title());
+                            }
+                        };
+                        new OjsCrawler().crawl(target, options, sink);
                         synchronized (articles) {
-                            articles.add(article);
                             writeCsv(folder.resolve("articles.csv"), articles);
                             writeJson(folder.resolve("articles.json"), articles);
-                            System.out.println("[COCOK] " + name + ": " + articles.size() + " — " + article.title());
                         }
-                    };
-                    new OjsCrawler().crawl(target, options, sink);
-                    synchronized (articles) {
-                        writeCsv(folder.resolve("articles.csv"), articles);
-                        writeJson(folder.resolve("articles.json"), articles);
+                        System.out.println("[SELESAI] " + name + ": " + articles.size() + " artikel cocok; output " + folder);
+                    } catch (Exception e) {
+                        failures++;
+                        System.err.println("[GAGAL] " + name + ": " + message(e));
                     }
-                    System.out.println("[SELESAI] " + name + ": " + articles.size() + " artikel cocok; output " + folder);
-                } catch (Exception e) {
-                    failures++;
-                    System.err.println("[GAGAL] " + name + ": " + message(e));
                 }
+                System.out.printf("Selesai. %d target, %d gagal.%n", targets.size(), failures);
+                if (failures == targets.size()) System.exit(2);
+                return;
             }
-            System.out.printf("Selesai. %d target, %d gagal.%n", targets.size(), failures);
-            if (failures == targets.size()) System.exit(2);
+
+            // Mode Default: Mesin Penelusuran Nasional Agregator Portal Garuda & SINTA
+            JournalCatalog catalog = null;
+            try {
+                catalog = JournalCatalog.load(Path.of("data", "journals_master.json"));
+            } catch (Exception ignored) {}
+
+            System.out.println("[GARUDA SEARCH] Menelusuri dokumen di Portal Garuda untuk kata kunci: \"" + options.keyword + "\"");
+            if (options.area != null) System.out.println("[FILTER BIDANG] " + options.area + " (" + GarudaSubject.getSubjectName(options.area) + ")");
+            if (options.minSinta != null && !options.minSinta.equalsIgnoreCase("ALL")) System.out.println("[FILTER SINTA] " + options.minSinta);
+            if (options.fromYear != null || options.toYear != null) System.out.println("[RENTANG TAHUN] " + options.fromYear + " s.d. " + options.toYear);
+
+            GarudaSearchEngine engine = new GarudaSearchEngine();
+            List<Article> collected = new ArrayList<>();
+            int maxPages = options.limit != null ? Math.max(1, (options.limit + 9) / 10) : 5;
+
+            Files.createDirectories(options.output);
+
+            for (int page = 1; page <= maxPages; page++) {
+                GarudaSearchEngine.SearchOptions searchOpts = new GarudaSearchEngine.SearchOptions(
+                        options.keyword,
+                        options.area != null ? options.area : "ALL",
+                        options.minSinta != null ? options.minSinta : "ALL",
+                        options.fromYear,
+                        options.toYear,
+                        page
+                );
+
+                System.out.println("[HALAMAN " + page + "] Mengakses hasil pencarian Portal Garuda...");
+                GarudaSearchEngine.PageResult pageResult = engine.searchPage(searchOpts, catalog);
+
+                for (Article a : pageResult.articles()) {
+                    collected.add(a);
+                    String sinta = catalog != null ? catalog.resolveSintaRank(a.url(), a.journal()) : "-";
+                    System.out.println("[COCOK " + collected.size() + "] " + a.title() + " (" + a.year() + ") [" + sinta + "] — " + a.journal());
+                    if (options.limit != null && collected.size() >= options.limit) {
+                        break;
+                    }
+                }
+
+                if (options.limit != null && collected.size() >= options.limit) {
+                    break;
+                }
+                if (!pageResult.hasMore()) {
+                    System.out.println("[AKHIR HASIL] Tidak ada halaman lagi dari Portal Garuda.");
+                    break;
+                }
+                Thread.sleep(300);
+            }
+
+            writeCsv(options.output.resolve("articles.csv"), collected);
+            writeJson(options.output.resolve("articles.json"), collected);
+
+            System.out.println("\n============================================================");
+            System.out.println("[SELESAI] Total " + collected.size() + " artikel berhasil dikumpulkan.");
+            System.out.println("Output tersimpan di:");
+            System.out.println(" - " + options.output.resolve("articles.csv").toAbsolutePath());
+            System.out.println(" - " + options.output.resolve("articles.json").toAbsolutePath());
+            System.out.println("============================================================");
         } catch (Exception e) {
             System.err.println("Error: " + message(e));
             usage();
@@ -168,14 +230,14 @@ public final class Main {
 
     private static void usage() {
         System.out.println("""
-                GoCrawl — crawler metadata OJS & katalog Portal Garuda (Java 21 LTS)
+                GoCrawl — Academic Research Engine (Portal Garuda & SINTA) (Java 21 LTS)
 
-                Mode 1: Penelusuran Artikel (OJS Crawling)
+                Mode 1: Penelusuran Dokumen Nasional (Portal Garuda Agregator) [Default]
                   java -jar gocrawl.jar --keyword <kata/frasa> [opsi...]
                   Contoh: java -jar gocrawl.jar --keyword "pendidikan karakter" --from-year 2021 --to-year 2024
-                  Multi-keyword: gunakan koma (,) atau operator OR, cth: --keyword "islamisasi, kurikulum"
+                  Dengan Filter: java -jar gocrawl.jar --keyword "deep learning" --field 60 --min-sinta S2
 
-                Mode 2: Panen Katalog Jurnal Portal Garuda (Harvester)
+                Mode 2: Panen Katalog Direktori Garuda (Harvester)
                   java -jar gocrawl.jar --harvest-catalog [--area <ID/Nama>] [--limit <N>] [--all] [--output <path>]
                   Contoh: java -jar gocrawl.jar --harvest-catalog --area 60 --limit 20
                   Panen menyeluruh: java -jar gocrawl.jar --harvest-catalog --all
@@ -184,11 +246,17 @@ public final class Main {
                   java -jar gocrawl.jar --list-fields
                   (Menampilkan daftar 40 subjek resmi Garuda beserta nomor ID-nya)
 
-                Parameter Opsional:
-                  --from-year <YYYY>   Batas awal tahun publikasi
-                  --to-year <YYYY>     Batas akhir tahun publikasi
-                  --output, -o <DIR>   Folder output (default: output/ atau data/journals_master.json)
-                  --help, -h           Menampilkan petunjuk pemakaian
+                Parameter Penelusuran:
+                  --keyword, -k <string>   Kata kunci pencarian artikel ilmiah
+                  --field, --area <ID/str> Filter subjek keilmuan Garuda (cth: 60 atau "Computer Science")
+                  --min-sinta <S1..S6>     Batas minimal akreditasi SINTA (cth: S2 mencakup S1 dan S2)
+                  --limit <N>              Batas maksimal total artikel yang diambil
+                  --from-year <YYYY>       Batas awal tahun publikasi
+                  --to-year <YYYY>         Batas akhir tahun publikasi
+                  --output, -o <DIR>       Folder output (default: output/ atau data/journals_master.json)
+                  --direct-ojs             Gunakan mode lawas penelusuran OJS per-kampus (dari journal.txt)
+                  --gui                    Buka antarmuka grafis desktop modern (2-Panel)
+                  --help, -h               Menampilkan petunjuk pemakaian
                 """);
     }
 
@@ -202,7 +270,9 @@ public final class Main {
             boolean harvestCatalog,
             String area,
             boolean harvestAll,
-            Integer limit
+            Integer limit,
+            boolean directOjs,
+            String minSinta
     ) {
         public static Options parse(String[] args) {
             String keyword = null;
@@ -214,15 +284,19 @@ public final class Main {
             String area = null;
             boolean harvestAll = false;
             Integer limit = null;
+            boolean directOjs = false;
+            String minSinta = "ALL";
 
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
                     case "--help", "-h" -> help = true;
                     case "--list-fields" -> listFields = true;
                     case "--harvest-catalog" -> harvestCatalog = true;
-                    case "--area" -> area = requireValue(args, ++i, "--area");
+                    case "--area", "--field" -> area = requireValue(args, ++i, args[i - 1]);
                     case "--all" -> harvestAll = true;
                     case "--limit" -> limit = Integer.parseInt(requireValue(args, ++i, "--limit"));
+                    case "--direct-ojs" -> directOjs = true;
+                    case "--min-sinta" -> minSinta = requireValue(args, ++i, "--min-sinta");
                     case "--keyword", "-k" -> keyword = requireValue(args, ++i, args[i - 1]);
                     case "--from-year" -> from = Integer.parseInt(requireValue(args, ++i, "--from-year"));
                     case "--to-year" -> to = Integer.parseInt(requireValue(args, ++i, "--to-year"));
@@ -231,11 +305,11 @@ public final class Main {
                 }
             }
 
-            if (help) return new Options("", null, null, Path.of("output"), true, false, false, null, false, null);
-            if (listFields) return new Options("", null, null, Path.of("output"), false, true, false, null, false, null);
+            if (help) return new Options("", null, null, Path.of("output"), true, false, false, null, false, null, false, "ALL");
+            if (listFields) return new Options("", null, null, Path.of("output"), false, true, false, null, false, null, false, "ALL");
             if (harvestCatalog) {
                 Path outPath = output != null ? output : Path.of("data", "journals_master.json");
-                return new Options("", null, null, outPath, false, false, true, area, harvestAll, limit);
+                return new Options("", null, null, outPath, false, false, true, area, harvestAll, limit, false, "ALL");
             }
 
             if (keyword == null || keyword.isBlank()) {
@@ -245,7 +319,7 @@ public final class Main {
                 throw new IllegalArgumentException("--from-year tidak boleh melebihi --to-year.");
             }
             Path defaultOut = output != null ? output : Path.of("output");
-            return new Options(keyword.strip(), from, to, defaultOut, false, false, false, area, harvestAll, limit);
+            return new Options(keyword.strip(), from, to, defaultOut, false, false, false, area, harvestAll, limit, directOjs, minSinta);
         }
 
         private static String requireValue(String[] args, int i, String option) {

@@ -32,6 +32,8 @@ public class DetailInspectorPanel extends JPanel {
     private final JTextArea titleArea = new JTextArea();
     private final JLabel originLabel = new JLabel("-");
     private final JLabel journalLabel = new JLabel("-");
+    private final JLabel subjectLabel = new JLabel("-");
+    private final JLabel sintaLabel = new JLabel("-");
     private final JTextArea authorsArea = new JTextArea("-");
     private final JLabel yearLabel = new JLabel("-");
     private final JLabel doiLabel = new JLabel("-");
@@ -107,24 +109,40 @@ public class DetailInspectorPanel extends JPanel {
         gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(journalLabel, gbc);
 
-        // Penulis
+        // Bidang / Subjek
         gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        metaBox.add(createFieldLabel("Bidang / Subjek:"), gbc);
+        subjectLabel.setForeground(new Color(60, 120, 60));
+        subjectLabel.setFont(subjectLabel.getFont().deriveFont(Font.BOLD));
+        gbc.gridx = 1; gbc.gridy = 2; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        metaBox.add(subjectLabel, gbc);
+
+        // Akreditasi SINTA
+        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        metaBox.add(createFieldLabel("Akreditasi SINTA:"), gbc);
+        sintaLabel.setForeground(new Color(180, 80, 20));
+        sintaLabel.setFont(sintaLabel.getFont().deriveFont(Font.BOLD));
+        gbc.gridx = 1; gbc.gridy = 3; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        metaBox.add(sintaLabel, gbc);
+
+        // Penulis
+        gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Penulis:"), gbc);
         authorsArea.setEditable(false);
         authorsArea.setLineWrap(true);
         authorsArea.setWrapStyleWord(true);
         authorsArea.setBackground(metaBox.getBackground());
-        gbc.gridx = 1; gbc.gridy = 2; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 4; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(authorsArea, gbc);
 
         // Tahun
-        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 5; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Tahun:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 3; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 5; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(yearLabel, gbc);
 
         // DOI
-        gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 6; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("DOI:"), gbc);
         doiLabel.setForeground(new Color(0, 102, 204));
         doiLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -136,11 +154,11 @@ public class DetailInspectorPanel extends JPanel {
                 }
             }
         });
-        gbc.gridx = 1; gbc.gridy = 4; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 6; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(doiLabel, gbc);
 
         // Tautan Web
-        gbc.gridx = 0; gbc.gridy = 5; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 7; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Tautan OJS:"), gbc);
         urlLabel.setForeground(new Color(0, 102, 204));
         urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -152,7 +170,7 @@ public class DetailInspectorPanel extends JPanel {
                 }
             }
         });
-        gbc.gridx = 1; gbc.gridy = 5; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 7; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(urlLabel, gbc);
 
         contentPanel.add(metaBox);
@@ -217,6 +235,8 @@ public class DetailInspectorPanel extends JPanel {
             titleArea.setText("Pilih salah satu artikel di tabel untuk membaca rincian lengkap.");
             originLabel.setText("-");
             journalLabel.setText("-");
+            subjectLabel.setText("-");
+            sintaLabel.setText("-");
             authorsArea.setText("-");
             yearLabel.setText("-");
             doiLabel.setText("-");
@@ -236,6 +256,34 @@ public class DetailInspectorPanel extends JPanel {
         }
         originLabel.setText(origin);
         journalLabel.setText(article.journal() == null || article.journal().isBlank() ? "-" : article.journal());
+
+        String subject = "-";
+        if (catalog != null) {
+            id.gocrawl.Journal j = catalog.findByUrlOrHost(article.url());
+            if (j == null) {
+                j = catalog.findByName(article.journal());
+            }
+            if (j != null && j.subjectName() != null && !j.subjectName().isBlank()) {
+                subject = id.gocrawl.GarudaSubject.getDisplayLabel(j.subjectId());
+                if (subject == null || subject.isBlank() || subject.equals("Unknown Subject")) {
+                    subject = j.subjectName();
+                }
+            }
+        }
+        subjectLabel.setText(subject);
+
+        String sinta = "-";
+        if (catalog != null) {
+            sinta = catalog.resolveSintaRank(article.url(), article.journal());
+        }
+        if (sinta.equals("-") || sinta.isBlank()) {
+            sintaLabel.setText("Belum Terakreditasi / Non-SINTA");
+            sintaLabel.setForeground(Color.GRAY);
+        } else {
+            sintaLabel.setText("SINTA " + sinta.replace("S", "") + " (" + sinta + ")");
+            sintaLabel.setForeground(new Color(180, 80, 20));
+        }
+
         authorsArea.setText(article.authors() == null || article.authors().isBlank() ? "-" : article.authors().replace(";", "\n• "));
         yearLabel.setText(article.year() == null || article.year().isBlank() ? "-" : article.year());
         doiLabel.setText(article.doi() == null || article.doi().isBlank() ? "Tidak tersedia" : article.doi());
