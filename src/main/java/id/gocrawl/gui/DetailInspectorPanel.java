@@ -263,9 +263,18 @@ public class DetailInspectorPanel extends JPanel {
             if (j == null) {
                 j = catalog.findByName(article.journal());
             }
-            if (j != null && j.subjectName() != null && !j.subjectName().isBlank()) {
-                subject = id.gocrawl.GarudaSubject.getDisplayLabel(j.subjectId());
-                if (subject == null || subject.isBlank() || subject.equals("Unknown Subject")) {
+            if (j != null) {
+                String subId = j.subjectId();
+                if ((subId == null || subId.isBlank() || subId.equals("-")) && j.subjectName() != null && !j.subjectName().isBlank()) {
+                    subId = id.gocrawl.GarudaSubject.resolveSubjectId(j.subjectName());
+                }
+                if (subId != null && !subId.isBlank() && !subId.equals("-")) {
+                    String label = id.gocrawl.GarudaSubject.getDisplayLabel(subId);
+                    if (label != null && !label.equals("Unknown Subject")) {
+                        subject = label;
+                    }
+                }
+                if (subject.equals("-") && j.subjectName() != null && !j.subjectName().isBlank() && !j.subjectName().equals("-")) {
                     subject = j.subjectName();
                 }
             }

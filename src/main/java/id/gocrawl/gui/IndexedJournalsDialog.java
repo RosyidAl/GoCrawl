@@ -1,5 +1,6 @@
 package id.gocrawl.gui;
 
+import id.gocrawl.GarudaSubject;
 import id.gocrawl.Journal;
 import id.gocrawl.JournalCatalog;
 
@@ -16,14 +17,27 @@ import java.awt.event.MouseEvent;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Dialog untuk melihat, menyaring, dan mengelola seluruh daftar jurnal ilmiah
  * yang telah terdaftar di dalam Master Journal Registry lokal (data/journals_master.json).
+ * Dilengkapi tag/lingkup bidang ilmu resmi Portal Garuda dan filter multi-kriteria.
  */
 public class IndexedJournalsDialog extends JDialog {
 
-    private final String[] COLUMN_NAMES = {"Nama Jurnal", "Akreditasi SINTA", "Penerbit / Institusi", "ISSN", "E-ISSN", "Tautan OJS"};
+    private final String[] COLUMN_NAMES = {
+            "Nama Jurnal",
+            "Akreditasi SINTA",
+            "Tag / Lingkup Garuda",
+            "Penerbit / Institusi",
+            "ISSN",
+            "E-ISSN",
+            "Tautan OJS"
+    };
+
     private final DefaultTableModel tableModel = new DefaultTableModel(COLUMN_NAMES, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -32,8 +46,9 @@ public class IndexedJournalsDialog extends JDialog {
     };
     private final JTable table = new JTable(tableModel);
     private final TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
-    private final JTextField searchField = new JTextField(20);
+    private final JTextField searchField = new JTextField(18);
     private final JComboBox<String> sintaFilterCombo = new JComboBox<>(new String[]{"Semua SINTA", "S1", "S2", "S3", "S4", "S5", "S6"});
+    private final JComboBox<String> scopeFilterCombo = new JComboBox<>();
     private final JLabel countLabel = new JLabel("Total Jurnal Terdaftar: 0");
 
     private JournalCatalog catalog;
@@ -49,23 +64,29 @@ public class IndexedJournalsDialog extends JDialog {
     }
 
     private void initUI() {
-        setSize(960, 560);
-        setMinimumSize(new Dimension(800, 420));
+        setSize(1060, 580);
+        setMinimumSize(new Dimension(860, 440));
         setLocationRelativeTo(getParent());
         setLayout(new BorderLayout(0, 10));
 
-        // 1. Toolbar Atas (Pencarian & Filter SINTA)
+        // 1. Toolbar Atas (Pencarian, Filter SINTA, & Filter Lingkup Garuda)
         JPanel topPanel = new JPanel(new BorderLayout(10, 0));
         topPanel.setBorder(new EmptyBorder(12, 14, 4, 14));
 
         JPanel filterBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         filterBox.add(new JLabel("Cari Jurnal:"));
-        searchField.setToolTipText("Ketik nama jurnal, penerbit, atau nomor ISSN");
+        searchField.setToolTipText("Ketik nama jurnal, penerbit, tag lingkup, atau nomor ISSN");
         filterBox.add(searchField);
 
-        filterBox.add(Box.createHorizontalStrut(10));
+        filterBox.add(Box.createHorizontalStrut(8));
         filterBox.add(new JLabel("Peringkat:"));
         filterBox.add(sintaFilterCombo);
+
+        filterBox.add(Box.createHorizontalStrut(8));
+        filterBox.add(new JLabel("Lingkup:"));
+        scopeFilterCombo.addItem("Semua Lingkup");
+        filterBox.add(scopeFilterCombo);
+
         topPanel.add(filterBox, BorderLayout.WEST);
 
         JButton addBtn = new JButton("+ Tambah Jurnal");
@@ -86,20 +107,59 @@ public class IndexedJournalsDialog extends JDialog {
         // 2. Tabel Jurnal
         table.setRowSorter(sorter);
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setRowHeight(26);
+        table.setRowHeight(28);
 
-        table.getColumnModel().getColumn(0).setPreferredWidth(280); // Nama Jurnal
-        table.getColumnModel().getColumn(1).setPreferredWidth(110); // SINTA
-        table.getColumnModel().getColumn(2).setPreferredWidth(230); // Penerbit
-        table.getColumnModel().getColumn(3).setPreferredWidth(90);  // ISSN
-        table.getColumnModel().getColumn(4).setPreferredWidth(90);  // E-ISSN
-        table.getColumnModel().getColumn(5).setPreferredWidth(180); // OJS URL
+        table.getColumnModel().getColumn(0).setPreferredWidth(250); // Nama Jurnal
+        table.getColumnModel().getColumn(1).setPreferredWidth(100); // SINTA
+        table.getColumnModel().getColumn(2).setPreferredWidth(210); // Tag / Lingkup Garuda
+        table.getColumnModel().getColumn(3).setPreferredWidth(200); // Penerbit
+        table.getColumnModel().getColumn(4).setPreferredWidth(85);  // ISSN
+        table.getColumnModel().getColumn(5).setPreferredWidth(85);  // E-ISSN
+        table.getColumnModel().getColumn(6).setPreferredWidth(160); // OJS URL
 
+        // Center Alignment & Styling
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        table.getColumnModel().getColumn(1).setCellRenderer(centerRenderer);
-        table.getColumnModel().getColumn(3).setCellRenderer(centerRenderer);
+
+        DefaultTableCellRenderer sintaRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                setHorizontalAlignment(JLabel.CENTER);
+                if (!isSelected) {
+                    String s = value != null ? value.toString() : "-";
+                    if (s.startsWith("S") || s.contains("Scopus")) {
+                        setForeground(new Color(180, 80, 20));
+                        setFont(getFont().deriveFont(Font.BOLD, 12f));
+                    } else {
+                        setForeground(Color.GRAY);
+                    }
+                }
+                return c;
+            }
+        };
+
+        DefaultTableCellRenderer tagRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                if (!isSelected) {
+                    String s = value != null ? value.toString() : "-";
+                    if (!s.equals("-")) {
+                        setForeground(new Color(30, 115, 60)); // Green badge
+                        setFont(getFont().deriveFont(Font.BOLD, 11.5f));
+                    } else {
+                        setForeground(Color.GRAY);
+                    }
+                }
+                return c;
+            }
+        };
+
+        table.getColumnModel().getColumn(1).setCellRenderer(sintaRenderer);
+        table.getColumnModel().getColumn(2).setCellRenderer(tagRenderer);
         table.getColumnModel().getColumn(4).setCellRenderer(centerRenderer);
+        table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setBorder(BorderFactory.createCompoundBorder(
@@ -136,6 +196,7 @@ public class IndexedJournalsDialog extends JDialog {
         });
 
         sintaFilterCombo.addActionListener(e -> applyFilters());
+        scopeFilterCombo.addActionListener(e -> applyFilters());
 
         table.addMouseListener(new MouseAdapter() {
             @Override
@@ -152,11 +213,19 @@ public class IndexedJournalsDialog extends JDialog {
         if (catalog == null) return;
 
         List<Journal> journals = catalog.allJournals();
+        Set<String> scopesInCatalog = new TreeSet<>();
+
         for (Journal j : journals) {
             String sinta = j.sintaRank() != null && !j.sintaRank().isBlank() ? j.sintaRank() : "-";
+            String tag = resolveSubjectTag(j);
+            if (!tag.equals("-")) {
+                scopesInCatalog.add(tag);
+            }
+
             tableModel.addRow(new Object[]{
                     j.name(),
                     sinta,
+                    tag,
                     j.publisher() != null ? j.publisher() : "-",
                     j.issn() != null ? j.issn() : "-",
                     j.eissn() != null ? j.eissn() : "-",
@@ -164,13 +233,45 @@ public class IndexedJournalsDialog extends JDialog {
             });
         }
 
+        // Update scope filter items without triggering unnecessary reset
+        String prevScope = (String) scopeFilterCombo.getSelectedItem();
+        scopeFilterCombo.removeAllItems();
+        scopeFilterCombo.addItem("Semua Lingkup");
+        for (String scope : scopesInCatalog) {
+            scopeFilterCombo.addItem(scope);
+        }
+        if (prevScope != null && scopesInCatalog.contains(prevScope)) {
+            scopeFilterCombo.setSelectedItem(prevScope);
+        }
+
         applyFilters();
     }
 
+    private static String resolveSubjectTag(Journal j) {
+        if (j == null) return "-";
+        String subId = j.subjectId();
+        if ((subId == null || subId.isBlank() || subId.equals("-")) && j.subjectName() != null && !j.subjectName().isBlank()) {
+            subId = GarudaSubject.resolveSubjectId(j.subjectName());
+        }
+        if (subId != null && !subId.isBlank() && !subId.equals("-")) {
+            String label = GarudaSubject.getDisplayLabel(subId);
+            if (label != null && !label.equals("Unknown Subject")) {
+                return label;
+            }
+        }
+        if (j.subjectName() != null && !j.subjectName().isBlank() && !j.subjectName().equals("-")) {
+            return j.subjectName();
+        }
+        return "-";
+    }
+
     private void applyFilters() {
-        String query = searchField.getText().strip().toLowerCase(java.util.Locale.ROOT);
+        String query = searchField.getText().strip().toLowerCase(Locale.ROOT);
         String sintaChoice = (String) sintaFilterCombo.getSelectedItem();
         final boolean filterSinta = sintaChoice != null && !sintaChoice.startsWith("Semua");
+
+        String scopeChoice = (String) scopeFilterCombo.getSelectedItem();
+        final boolean filterScope = scopeChoice != null && !scopeChoice.startsWith("Semua");
 
         RowFilter<DefaultTableModel, Integer> combinedFilter = new RowFilter<>() {
             @Override
@@ -181,10 +282,16 @@ public class IndexedJournalsDialog extends JDialog {
                         return false;
                     }
                 }
+                if (filterScope) {
+                    String scopeVal = entry.getStringValue(2);
+                    if (!scopeVal.equalsIgnoreCase(scopeChoice)) {
+                        return false;
+                    }
+                }
                 if (!query.isEmpty()) {
                     boolean textMatched = false;
                     for (int i = 0; i < entry.getValueCount(); i++) {
-                        if (entry.getStringValue(i).toLowerCase(java.util.Locale.ROOT).contains(query)) {
+                        if (entry.getStringValue(i).toLowerCase(Locale.ROOT).contains(query)) {
                             textMatched = true;
                             break;
                         }
@@ -212,7 +319,7 @@ public class IndexedJournalsDialog extends JDialog {
             return;
         }
         int modelRow = table.convertRowIndexToModel(viewRow);
-        String url = (String) tableModel.getValueAt(modelRow, 5);
+        String url = (String) tableModel.getValueAt(modelRow, 6);
         if (url != null && !url.isBlank() && !url.equals("-")) {
             try {
                 Desktop.getDesktop().browse(URI.create(url));
