@@ -132,10 +132,13 @@ public final class GarudaHarvester {
                 String issn = extractRegex(ISSN_PATTERN, rowText, "-");
                 String eissn = extractRegex(EISSN_PATTERN, rowText, "-");
 
-                // Buka halaman detail jurnal untuk mengambil Website URL (OJS) dan OAI Link
+                // Buka halaman detail jurnal untuk mengambil Website URL (OJS), OAI Link, Core Subject, dan Multi-Subject
                 String detailUrl = BASE_URL + (viewHref.startsWith("/") ? viewHref : "/" + viewHref);
                 String ojsUrl = "";
                 String oaiUrl = "";
+                String coreSubject = "-";
+                String extractedSubjectName = subjectName;
+                String extractedSubjectId = subjectId;
 
                 try {
                     sleep(POLITE_DELAY_MS);
@@ -148,6 +151,40 @@ public final class GarudaHarvester {
                     if (oaiLink != null) {
                         oaiUrl = oaiLink.attr("href").strip();
                     }
+
+                    // Ekstraksi Core Subject resmi Portal Garuda
+                    Element coreSubEl = detailDoc.selectFirst(".j-meta-pub:contains(Core Subject)");
+                    if (coreSubEl != null) {
+                        String rawCore = coreSubEl.text().replaceFirst("(?i)Core Subject\\s*:\\s*", "").replaceAll("\\s+", " ").strip();
+                        rawCore = rawCore.replaceAll(",\\s*$", "").strip();
+                        if (!rawCore.isBlank()) {
+                            coreSubject = rawCore;
+                        }
+                    }
+
+                    // Ekstraksi Multi-Subject / Area Tags Portal Garuda
+                    Elements subEls = detailDoc.select(".j-meta-subject a");
+                    if (!subEls.isEmpty()) {
+                        List<String> sNames = new ArrayList<>();
+                        List<String> sIds = new ArrayList<>();
+                        for (Element se : subEls) {
+                            String sn = se.text().strip();
+                            if (!sn.isBlank() && !sNames.contains(sn)) {
+                                sNames.add(sn);
+                                String sHref = se.attr("href");
+                                String sid = extractGarudaId(sHref);
+                                if (!sid.isBlank() && !sIds.contains(sid)) {
+                                    sIds.add(sid);
+                                }
+                            }
+                        }
+                        if (!sNames.isEmpty()) {
+                            extractedSubjectName = String.join(", ", sNames);
+                        }
+                        if (!sIds.isEmpty()) {
+                            extractedSubjectId = String.join(", ", sIds);
+                        }
+                    }
                 } catch (Exception e) {
                     System.err.println("  [PERINGATAN] Gagal membuka detail jurnal " + garudaId + ": " + e.getMessage());
                 }
@@ -156,8 +193,9 @@ public final class GarudaHarvester {
                         garudaId,
                         journalName,
                         publisher,
-                        subjectId,
-                        subjectName,
+                        coreSubject,
+                        extractedSubjectId,
+                        extractedSubjectName,
                         ojsUrl,
                         oaiUrl,
                         issn,

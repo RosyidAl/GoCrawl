@@ -101,6 +101,17 @@ public final class JournalCatalog {
         return "-";
     }
 
+    public synchronized String resolveCoreSubject(String url, String journalName) {
+        Journal j = findByUrlOrHost(url);
+        if (j == null && journalName != null) {
+            j = findByName(journalName);
+        }
+        if (j != null && j.coreSubject() != null && !j.coreSubject().isBlank() && !j.coreSubject().equals("-")) {
+            return j.coreSubject();
+        }
+        return "-";
+    }
+
     public static boolean matchesSinta(String rank, String minFilter) {
         if (minFilter == null || minFilter.isBlank() || minFilter.equalsIgnoreCase("ALL")) {
             return true;
@@ -190,6 +201,7 @@ public final class JournalCatalog {
                 writer.write("    \"name\": \"" + jsonEscape(j.name()) + "\",\n");
                 writer.write("    \"publisher\": \"" + jsonEscape(j.publisher()) + "\",\n");
                 writer.write("    \"garudaId\": \"" + jsonEscape(j.garudaId()) + "\",\n");
+                writer.write("    \"coreSubject\": \"" + jsonEscape(j.coreSubject() != null ? j.coreSubject() : "-") + "\",\n");
                 writer.write("    \"subjectId\": \"" + jsonEscape(j.subjectId()) + "\",\n");
                 writer.write("    \"subjectName\": \"" + jsonEscape(j.subjectName()) + "\",\n");
                 writer.write("    \"sintaRank\": \"" + jsonEscape(j.sintaRank()) + "\",\n");
@@ -225,6 +237,7 @@ public final class JournalCatalog {
                     fields.getOrDefault("name", ""),
                     fields.getOrDefault("publisher", ""),
                     garudaId,
+                    fields.getOrDefault("coreSubject", "-"),
                     fields.getOrDefault("subjectId", ""),
                     fields.getOrDefault("subjectName", ""),
                     fields.getOrDefault("sintaRank", "-"),
