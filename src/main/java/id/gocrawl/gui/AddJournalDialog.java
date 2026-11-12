@@ -54,7 +54,7 @@ public class AddJournalDialog extends JDialog {
         setResizable(false);
 
         // Isi ComboBox Subjek
-        subjectCombo.addItem("- Pilih Subjek Garuda -");
+        subjectCombo.addItem("- Pilih Subjek -");
         for (var entry : GarudaSubject.OFFICIAL_SUBJECTS.entrySet()) {
             subjectCombo.addItem(entry.getKey() + " - " + entry.getValue());
         }
@@ -94,15 +94,15 @@ public class AddJournalDialog extends JDialog {
         gbc.gridx = 1; gbc.gridy = 3;
         formPanel.add(publisherField, gbc);
 
-        // Baris 5: Subjek Garuda
+        // Baris 5: Subjek
         gbc.gridx = 0; gbc.gridy = 4;
-        formPanel.add(new JLabel("Subjek Garuda:"), gbc);
+        formPanel.add(new JLabel("Subjek:"), gbc);
         gbc.gridx = 1; gbc.gridy = 4;
         formPanel.add(subjectCombo, gbc);
 
-        // Baris 6: Peringkat SINTA
+        // Baris 6: Peringkat Akreditasi
         gbc.gridx = 0; gbc.gridy = 5;
-        formPanel.add(new JLabel("Akreditasi SINTA:"), gbc);
+        formPanel.add(new JLabel("Akreditasi:"), gbc);
         gbc.gridx = 1; gbc.gridy = 5;
         formPanel.add(sintaCombo, gbc);
 

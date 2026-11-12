@@ -31,7 +31,7 @@ import java.util.function.Consumer;
  */
 public class ArticleTablePanel extends JPanel {
 
-    private final String[] COLUMN_NAMES = {"Judul Artikel", "Jurnal", "SINTA", "Asal / Penerbit", "Penulis", "Tahun", "DOI"};
+    private final String[] COLUMN_NAMES = {"Judul Artikel", "Jurnal", "Akreditasi", "Asal / Penerbit", "Penulis", "Tahun", "DOI"};
     private final DefaultTableModel tableModel = new DefaultTableModel(COLUMN_NAMES, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -43,11 +43,11 @@ public class ArticleTablePanel extends JPanel {
     private final JTextField filterField = new JTextField(18);
 
     private final JLabel countLabel = new JLabel("Menampilkan: 0 artikel");
-    private final JButton firstPageBtn = new JButton("⏮");
-    private final JButton prevPageBtn = new JButton("◀ Prev");
+    private final JButton firstPageBtn = new JButton("«");
+    private final JButton prevPageBtn = new JButton("‹");
     private final JLabel pageInfoLabel = new JLabel("Halaman 1 / 1");
-    private final JButton nextPageBtn = new JButton("Next ▶");
-    private final JButton lastPageBtn = new JButton("⏭");
+    private final JButton nextPageBtn = new JButton("›");
+    private final JButton lastPageBtn = new JButton("»");
     private final JTextField jumpPageField = new JTextField(3);
     private final JButton jumpBtn = new JButton("Buka");
     private final JComboBox<Integer> pageSizeComboBox = new JComboBox<>(new Integer[]{10, 20, 25, 50});
@@ -102,7 +102,7 @@ public class ArticleTablePanel extends JPanel {
         table.setRowHeight(26);
         table.getColumnModel().getColumn(0).setPreferredWidth(320); // Judul Artikel
         table.getColumnModel().getColumn(1).setPreferredWidth(160); // Jurnal
-        table.getColumnModel().getColumn(2).setPreferredWidth(60);  // SINTA
+        table.getColumnModel().getColumn(2).setPreferredWidth(75);  // Akreditasi
         table.getColumnModel().getColumn(3).setPreferredWidth(150); // Asal / Penerbit
         table.getColumnModel().getColumn(4).setPreferredWidth(120); // Penulis
         table.getColumnModel().getColumn(5).setPreferredWidth(55);  // Tahun
@@ -123,26 +123,30 @@ public class ArticleTablePanel extends JPanel {
 
         JPanel centerBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
 
-        firstPageBtn.setToolTipText("Halaman Pertama (1)");
-        firstPageBtn.setPreferredSize(new Dimension(42, 26));
+        firstPageBtn.setFont(firstPageBtn.getFont().deriveFont(Font.BOLD, 14f));
+        firstPageBtn.setToolTipText("Halaman Pertama");
+        firstPageBtn.setPreferredSize(new Dimension(32, 26));
         firstPageBtn.setEnabled(false);
         firstPageBtn.addActionListener(e -> changePage(1));
 
+        prevPageBtn.setFont(prevPageBtn.getFont().deriveFont(Font.BOLD, 15f));
         prevPageBtn.setToolTipText("Halaman Sebelumnya");
-        prevPageBtn.setPreferredSize(new Dimension(80, 26));
+        prevPageBtn.setPreferredSize(new Dimension(32, 26));
         prevPageBtn.setEnabled(false);
         prevPageBtn.addActionListener(e -> changePage(currentPage - 1));
 
-        pageInfoLabel.setFont(pageInfoLabel.getFont().deriveFont(Font.BOLD, 12f));
-        pageInfoLabel.setBorder(new EmptyBorder(0, 6, 0, 6));
+        pageInfoLabel.setFont(pageInfoLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        pageInfoLabel.setBorder(new EmptyBorder(0, 8, 0, 8));
 
+        nextPageBtn.setFont(nextPageBtn.getFont().deriveFont(Font.BOLD, 15f));
         nextPageBtn.setToolTipText("Halaman Berikutnya");
-        nextPageBtn.setPreferredSize(new Dimension(80, 26));
+        nextPageBtn.setPreferredSize(new Dimension(32, 26));
         nextPageBtn.setEnabled(false);
         nextPageBtn.addActionListener(e -> changePage(currentPage + 1));
 
+        lastPageBtn.setFont(lastPageBtn.getFont().deriveFont(Font.BOLD, 14f));
         lastPageBtn.setToolTipText("Halaman Terakhir");
-        lastPageBtn.setPreferredSize(new Dimension(42, 26));
+        lastPageBtn.setPreferredSize(new Dimension(32, 26));
         lastPageBtn.setEnabled(false);
         lastPageBtn.addActionListener(e -> changePage(totalPages));
 

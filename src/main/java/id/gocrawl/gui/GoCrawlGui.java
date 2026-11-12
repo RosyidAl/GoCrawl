@@ -61,7 +61,7 @@ public class GoCrawlGui extends JFrame {
     private Integer activeToYear = null;
 
     public GoCrawlGui() {
-        super("GoCrawl Desktop — Academic Research Engine (Garuda & SINTA)");
+        super("GoCrawl Desktop — Academic Research Engine");
         initCatalog();
         initUI();
     }
@@ -115,28 +115,24 @@ public class GoCrawlGui extends JFrame {
         JPanel headerToolbar = new JPanel(new BorderLayout(10, 0));
         headerToolbar.setBorder(new EmptyBorder(10, 14, 10, 14));
 
-        // Judul Aplikasi & Badge Agregator
+        // Judul Aplikasi
         JPanel brandBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         JLabel titleLabel = new JLabel("GoCrawl");
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 17f));
-        JLabel subBadge = new JLabel("Garuda & SINTA");
-        subBadge.setFont(subBadge.getFont().deriveFont(Font.PLAIN, 10f));
-        subBadge.setForeground(new Color(120, 120, 120));
         brandBox.add(titleLabel);
-        brandBox.add(subBadge);
 
         headerToolbar.add(brandBox, BorderLayout.WEST);
 
-        // Inisialisasi ComboBox Akreditasi SINTA
-        sintaComboBox.addItem(new SintaFilterItem("ALL", "Semua SINTA"));
-        sintaComboBox.addItem(new SintaFilterItem("S1", "Minimal SINTA 1"));
-        sintaComboBox.addItem(new SintaFilterItem("S2", "Minimal SINTA 2"));
-        sintaComboBox.addItem(new SintaFilterItem("S3", "Minimal SINTA 3"));
-        sintaComboBox.addItem(new SintaFilterItem("S4", "Minimal SINTA 4"));
-        sintaComboBox.addItem(new SintaFilterItem("S5", "Minimal SINTA 5"));
-        sintaComboBox.addItem(new SintaFilterItem("S6", "Minimal SINTA 6"));
-        sintaComboBox.setPreferredSize(new Dimension(140, 28));
-        sintaComboBox.setToolTipText("Filter batas minimal peringkat akreditasi jurnal nasional");
+        // Inisialisasi ComboBox Akreditasi
+        sintaComboBox.addItem(new SintaFilterItem("ALL", "Semua"));
+        sintaComboBox.addItem(new SintaFilterItem("S1", "Minimal S1"));
+        sintaComboBox.addItem(new SintaFilterItem("S2", "Minimal S2"));
+        sintaComboBox.addItem(new SintaFilterItem("S3", "Minimal S3"));
+        sintaComboBox.addItem(new SintaFilterItem("S4", "Minimal S4"));
+        sintaComboBox.addItem(new SintaFilterItem("S5", "Minimal S5"));
+        sintaComboBox.addItem(new SintaFilterItem("S6", "Minimal S6"));
+        sintaComboBox.setPreferredSize(new Dimension(115, 28));
+        sintaComboBox.setToolTipText("Filter batas minimal peringkat akreditasi jurnal");
 
         // Kontrol Pencarian di Tengah Toolbar
         JPanel searchControls = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
@@ -301,7 +297,7 @@ public class GoCrawlGui extends JFrame {
                     for (int g = gStart; g <= gEnd; g++) {
                         if (isCancelled()) break;
                         if (!garudaRawPageCache.containsKey(g)) {
-                            publish("Mengambil halaman Garuda ke-" + g + "...");
+                            publish("Mengambil halaman ke-" + g + "...");
                             GarudaSearchEngine.SearchOptions opts = new GarudaSearchEngine.SearchOptions(
                                     activeKeyword,
                                     "ALL",
@@ -354,7 +350,7 @@ public class GoCrawlGui extends JFrame {
                             break;
                         }
 
-                        publish("Memindai Garuda hal-" + nextG + " (" + sintaFilteredPool.size() + " artikel SINTA terkumpul)...");
+                        publish("Memindai hal-" + nextG + " (" + sintaFilteredPool.size() + " artikel terkumpul)...");
 
                         GarudaSearchEngine.PageResult res;
                         if (garudaRawPageCache.containsKey(nextG)) {
@@ -438,7 +434,7 @@ public class GoCrawlGui extends JFrame {
                     tablePanel.setArticles(articles);
                     tablePanel.updatePagination(currentSearchPage, totalSearchPages, totalRecordsFound, articles.size());
                     tablePanel.setProgress(false, "Halaman " + currentSearchPage + " dari " + totalSearchPages +
-                            " — Menampilkan " + articles.size() + " artikel (Total: " + totalRecordsFound + " dokumen di Garuda)");
+                            " — Menampilkan " + articles.size() + " artikel (Total: " + totalRecordsFound + " dokumen)");
 
                     saveSearchOutput();
                 } catch (Exception e) {

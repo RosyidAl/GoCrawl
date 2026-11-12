@@ -31,9 +31,9 @@ public class IndexedJournalsDialog extends JDialog {
 
     private final String[] COLUMN_NAMES = {
             "Nama Jurnal",
-            "Akreditasi SINTA",
+            "Akreditasi",
             "Core Subject",
-            "Tag / Lingkup Garuda",
+            "Tag / Lingkup",
             "Penerbit / Institusi",
             "ISSN",
             "E-ISSN",
@@ -49,7 +49,7 @@ public class IndexedJournalsDialog extends JDialog {
     private final JTable table = new JTable(tableModel);
     private final TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
     private final JTextField searchField = new JTextField(15);
-    private final JComboBox<String> sintaFilterCombo = new JComboBox<>(new String[]{"Semua SINTA", "S1", "S2", "S3", "S4", "S5", "S6"});
+    private final JComboBox<String> sintaFilterCombo = new JComboBox<>(new String[]{"Semua", "S1", "S2", "S3", "S4", "S5", "S6"});
     private final JComboBox<String> coreFilterCombo = new JComboBox<>();
     private final JComboBox<String> scopeFilterCombo = new JComboBox<>();
     private final JLabel countLabel = new JLabel("Total Jurnal Terdaftar: 0");
@@ -82,7 +82,7 @@ public class IndexedJournalsDialog extends JDialog {
         filterBox.add(searchField);
 
         filterBox.add(Box.createHorizontalStrut(6));
-        filterBox.add(new JLabel("SINTA:"));
+        filterBox.add(new JLabel("Akreditasi:"));
         filterBox.add(sintaFilterCombo);
 
         filterBox.add(Box.createHorizontalStrut(6));

@@ -126,9 +126,9 @@ public class DetailInspectorPanel extends JPanel {
         gbc.gridx = 1; gbc.gridy = 3; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(subjectLabel, gbc);
 
-        // Akreditasi SINTA
+        // Akreditasi
         gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Akreditasi SINTA:"), gbc);
+        metaBox.add(createFieldLabel("Akreditasi:"), gbc);
         sintaLabel.setForeground(new Color(180, 80, 20));
         sintaLabel.setFont(sintaLabel.getFont().deriveFont(Font.BOLD));
         gbc.gridx = 1; gbc.gridy = 4; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -309,10 +309,10 @@ public class DetailInspectorPanel extends JPanel {
             sinta = catalog.resolveSintaRank(article.url(), article.journal());
         }
         if (sinta.equals("-") || sinta.isBlank()) {
-            sintaLabel.setText("Belum Terakreditasi / Non-SINTA");
+            sintaLabel.setText("Belum Terakreditasi");
             sintaLabel.setForeground(Color.GRAY);
         } else {
-            sintaLabel.setText("SINTA " + sinta.replace("S", "") + " (" + sinta + ")");
+            sintaLabel.setText(sinta.toUpperCase());
             sintaLabel.setForeground(new Color(180, 80, 20));
         }
 
