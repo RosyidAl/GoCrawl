@@ -1,0 +1,72 @@
+[
+  {
+    "id": "garuda-30709",
+    "name": "JAMASTIKA\\",
+    "publisher": "Universitas Ngudi Waluyo",
+    "garudaId": "30709",
+    "subjectId": "60",
+    "subjectName": "Computer Science & IT",
+    "sintaRank": "-",
+    "ojsUrl": "https://jurnal.unw.ac.id/index.php/jamastika",
+    "oaiUrl": "https://jurnal.unw.ac.id/index.php/jamastika/oai",
+    "issn": "-",
+    "eissn": "28097521",
+    "isActive": true
+  },
+  {
+    "id": "garuda-42166",
+    "name": "Journal of Data Science",
+    "publisher": "SEAN INSTITUTE",
+    "garudaId": "42166",
+    "subjectId": "60",
+    "subjectName": "Computer Science & IT",
+    "sintaRank": "-",
+    "ojsUrl": "https://ejournal.seaninstitute.or.id/index.php/visualization",
+    "oaiUrl": "https://ejournal.seaninstitute.or.id/index.php/visualization/oai",
+    "issn": "-",
+    "eissn": "30252792",
+    "isActive": true
+  },
+  {
+    "id": "garuda-979",
+    "name": "(JELIKU) Jurnal Elektronik Ilmu Komputer Udayana",
+    "publisher": "Universitas Udayana",
+    "garudaId": "979",
+    "subjectId": "60",
+    "subjectName": "Computer Science & IT",
+    "sintaRank": "-",
+    "ojsUrl": "https://ojs.unud.ac.id/index.php/JLK",
+    "oaiUrl": "https://ojs.unud.ac.id/index.php/JLK/oai",
+    "issn": "23015373",
+    "eissn": "26545101",
+    "isActive": true
+  },
+  {
+    "id": "garuda-18891",
+    "name": "A Jamiy: Jurnal Bahasa dan Sastra Arab",
+    "publisher": "Universitas Muhammadiyah Gorontalo",
+    "garudaId": "18891",
+    "subjectId": "97",
+    "subjectName": "Education",
+    "sintaRank": "-",
+    "ojsUrl": "http://journal.umgo.ac.id/index.php/AJamiy",
+    "oaiUrl": "http://journal.umgo.ac.id/index.php/AJamiy/oai",
+    "issn": "22529926",
+    "eissn": "26572206",
+    "isActive": true
+  },
+  {
+    "id": "garuda-14872",
+    "name": "Anil Islam: Jurnal Kebudayaan dan Ilmu Keislaman",
+    "publisher": "Institut Ilmu Keislaman Annuqayah Guluk-Guluk Sumenep",
+    "garudaId": "14872",
+    "subjectId": "97",
+    "subjectName": "Education",
+    "sintaRank": "-",
+    "ojsUrl": "http://jurnal.instika.ac.id/index.php/AnilIslam",
+    "oaiUrl": "http://jurnal.instika.ac.id/index.php/AnilIslam/oai",
+    "issn": "20854080",
+    "eissn": "25287532",
+    "isActive": true
+  }
+]

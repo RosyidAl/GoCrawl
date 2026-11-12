@@ -52,6 +52,20 @@ public final class Main {
                 usage();
                 return;
             }
+            if (options.listFields) {
+                listFields();
+                return;
+            }
+            if (options.harvestCatalog) {
+                GarudaHarvester.HarvestOptions harvestOpts = new GarudaHarvester.HarvestOptions(
+                        options.area,
+                        options.harvestAll,
+                        options.limit,
+                        options.output
+                );
+                GarudaHarvester.harvest(harvestOpts);
+                return;
+            }
             List<URI> targets = readTargets(Path.of("journal.txt"));
             if (targets.isEmpty()) {
                 throw new IllegalArgumentException("journal.txt tidak berisi URL target.");
@@ -91,6 +105,19 @@ public final class Main {
             usage();
             System.exit(1);
         }
+    }
+
+    private static void listFields() {
+        System.out.println("================================================================================");
+        System.out.println("            DAFTAR 40 BIDANG/SUBJEK RESMI PORTAL GARUDA KEMDIKTISAINTEK         ");
+        System.out.println("================================================================================");
+        System.out.printf("%-6s | %-60s\n", "ID", "Nama Subjek Resmi");
+        System.out.println("-------+------------------------------------------------------------------------");
+        for (Map.Entry<String, String> entry : GarudaSubject.OFFICIAL_SUBJECTS.entrySet()) {
+            System.out.printf("%-6s | %-60s\n", entry.getKey(), entry.getValue());
+        }
+        System.out.println("================================================================================");
+        System.out.println("Gunakan flag --area <ID/Nama> saat panen katalog, contoh: --harvest-catalog --area 60");
     }
 
     private static List<URI> readTargets(Path path) throws IOException {
@@ -140,21 +167,62 @@ public final class Main {
     }
 
     private static void usage() {
-        System.out.println("GoCrawl — crawler metadata OJS (Java 21 / Fase 2)\n" +
-                "Pemakaian: java -jar gocrawl.jar --keyword <kata/frasa> [--from-year YYYY] [--to-year YYYY] [--output DIR]\n" +
-                "Kueri multi-kata kunci: pisahkan dengan koma (,) atau operator OR, contoh: --keyword \"islamisasi, islamization, dakwah\"\n" +
-                "Default output: output/ | Target dibaca dari journal.txt | Tahun opsional.");
+        System.out.println("""
+                GoCrawl — crawler metadata OJS & katalog Portal Garuda (Java 21 LTS)
+
+                Mode 1: Penelusuran Artikel (OJS Crawling)
+                  java -jar gocrawl.jar --keyword <kata/frasa> [opsi...]
+                  Contoh: java -jar gocrawl.jar --keyword "pendidikan karakter" --from-year 2021 --to-year 2024
+                  Multi-keyword: gunakan koma (,) atau operator OR, cth: --keyword "islamisasi, kurikulum"
+
+                Mode 2: Panen Katalog Jurnal Portal Garuda (Harvester)
+                  java -jar gocrawl.jar --harvest-catalog [--area <ID/Nama>] [--limit <N>] [--all] [--output <path>]
+                  Contoh: java -jar gocrawl.jar --harvest-catalog --area 60 --limit 20
+                  Panen menyeluruh: java -jar gocrawl.jar --harvest-catalog --all
+
+                Mode 3: Informasi Taksonomi Subjek Resmi
+                  java -jar gocrawl.jar --list-fields
+                  (Menampilkan daftar 40 subjek resmi Garuda beserta nomor ID-nya)
+
+                Parameter Opsional:
+                  --from-year <YYYY>   Batas awal tahun publikasi
+                  --to-year <YYYY>     Batas akhir tahun publikasi
+                  --output, -o <DIR>   Folder output (default: output/ atau data/journals_master.json)
+                  --help, -h           Menampilkan petunjuk pemakaian
+                """);
     }
 
-    public record Options(String keyword, Integer fromYear, Integer toYear, Path output, boolean help) {
+    public record Options(
+            String keyword,
+            Integer fromYear,
+            Integer toYear,
+            Path output,
+            boolean help,
+            boolean listFields,
+            boolean harvestCatalog,
+            String area,
+            boolean harvestAll,
+            Integer limit
+    ) {
         public static Options parse(String[] args) {
             String keyword = null;
             Integer from = null, to = null;
-            Path output = Path.of("output");
+            Path output = null;
             boolean help = false;
+            boolean listFields = false;
+            boolean harvestCatalog = false;
+            String area = null;
+            boolean harvestAll = false;
+            Integer limit = null;
+
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
                     case "--help", "-h" -> help = true;
+                    case "--list-fields" -> listFields = true;
+                    case "--harvest-catalog" -> harvestCatalog = true;
+                    case "--area" -> area = requireValue(args, ++i, "--area");
+                    case "--all" -> harvestAll = true;
+                    case "--limit" -> limit = Integer.parseInt(requireValue(args, ++i, "--limit"));
                     case "--keyword", "-k" -> keyword = requireValue(args, ++i, args[i - 1]);
                     case "--from-year" -> from = Integer.parseInt(requireValue(args, ++i, "--from-year"));
                     case "--to-year" -> to = Integer.parseInt(requireValue(args, ++i, "--to-year"));
@@ -162,12 +230,22 @@ public final class Main {
                     default -> throw new IllegalArgumentException("Argumen tidak dikenal: " + args[i]);
                 }
             }
-            if (help) return new Options("", null, null, output, true);
-            if (keyword == null || keyword.isBlank()) throw new IllegalArgumentException("--keyword wajib diisi.");
+
+            if (help) return new Options("", null, null, Path.of("output"), true, false, false, null, false, null);
+            if (listFields) return new Options("", null, null, Path.of("output"), false, true, false, null, false, null);
+            if (harvestCatalog) {
+                Path outPath = output != null ? output : Path.of("data", "journals_master.json");
+                return new Options("", null, null, outPath, false, false, true, area, harvestAll, limit);
+            }
+
+            if (keyword == null || keyword.isBlank()) {
+                throw new IllegalArgumentException("--keyword wajib diisi untuk penelusuran artikel (atau gunakan --harvest-catalog / --list-fields).");
+            }
             if (from != null && to != null && from > to) {
                 throw new IllegalArgumentException("--from-year tidak boleh melebihi --to-year.");
             }
-            return new Options(keyword.strip(), from, to, output, false);
+            Path defaultOut = output != null ? output : Path.of("output");
+            return new Options(keyword.strip(), from, to, defaultOut, false, false, false, area, harvestAll, limit);
         }
 
         private static String requireValue(String[] args, int i, String option) {
