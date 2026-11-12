@@ -1,0 +1,74 @@
+[
+  {
+    "queryKey": "mataazirjurnaladministrasidanmanajemenpendidikan",
+    "journalName": "MATAAZIR: Jurnal Administrasi dan Manajemen Pendidikan",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "tajdidjurnalpemikirankeislamandankemanusiaan",
+    "journalName": "Tajdid: Jurnal Pemikiran Keislaman dan Kemanusiaan",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "inveritatelux",
+    "journalName": "IN VERITATE LUX",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "jurnalmanajemenpendidikandanilmusosial",
+    "journalName": "Jurnal Manajemen Pendidikan dan Ilmu Sosial (JMPIS)",
+    "sintaRank": "S3",
+    "publisher": "DINASTI REVIEW",
+    "ojsUrl": "https://dinastirev.org/JMPIS",
+    "garudaId": "19612"
+  },
+  {
+    "queryKey": "jurnalabdielkhazanahpemikiranteologipendidikanagamakristendanmusikgereja",
+    "journalName": "Jurnal Abdiel: Khazanah Pemikiran Teologi, Pendidikan Agama Kristen dan Musik Gereja",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "kumpulanjurnalmahasiswafakultashukumsarjanailmuhukumjuli2017",
+    "journalName": "Kumpulan Jurnal Mahasiswa Fakultas Hukum Sarjana Ilmu Hukum, Juli 2017",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "annurjurnalstudiislam",
+    "journalName": "AN NUR: Jurnal Studi Islam",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "didaktikareligia",
+    "journalName": "DIDAKTIKA RELIGIA",
+    "sintaRank": "S3",
+    "publisher": "Universitas Islam Negeri Syekh Wasil Kediri",
+    "ojsUrl": "https://jurnalpascasarjana.iainkediri.ac.id/index.php/didaktika",
+    "garudaId": "25145"
+  },
+  {
+    "queryKey": "jurnalpengembanganprofesiguru",
+    "journalName": "JURNAL ANSIRU PAI : Jurnal Pengembangan Profesi Guru Pendidikan Agama Islam",
+    "sintaRank": "S4",
+    "publisher": "Universitas Islam Negeri Sumatera Utara",
+    "ojsUrl": "http://jurnal.uinsu.ac.id/index.php/ansiru",
+    "garudaId": "15972"
+  }
+]

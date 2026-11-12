@@ -33,24 +33,29 @@ public final class JournalCatalog {
     }
 
     public synchronized Journal findByUrlOrHost(String url) {
-        if (url == null || url.isBlank()) return null;
-        String lowerUrl = url.toLowerCase(Locale.ROOT);
+        if (url == null || url.isBlank() || url.equals("-")) return null;
+        String lowerUrl = url.toLowerCase(Locale.ROOT).replaceAll("/+$", "");
         String host = "";
+        String path = "";
         try {
             URI u = URI.create(url);
             if (u.getHost() != null) host = u.getHost().toLowerCase(Locale.ROOT);
+            if (u.getPath() != null) path = u.getPath().toLowerCase(Locale.ROOT);
         } catch (Exception ignored) {}
 
         for (Journal j : journalsById.values()) {
             if (j.ojsUrl() != null && !j.ojsUrl().isBlank()) {
-                String ojsLower = j.ojsUrl().toLowerCase(Locale.ROOT);
+                String ojsLower = j.ojsUrl().toLowerCase(Locale.ROOT).replaceAll("/+$", "");
                 if (lowerUrl.startsWith(ojsLower) || ojsLower.startsWith(lowerUrl)) {
                     return j;
                 }
                 try {
                     URI ju = URI.create(j.ojsUrl());
                     if (ju.getHost() != null && !host.isEmpty() && host.equalsIgnoreCase(ju.getHost())) {
-                        return j;
+                        String jPath = ju.getPath() != null ? ju.getPath().toLowerCase(Locale.ROOT).replaceAll("/+$", "") : "";
+                        if (!jPath.isEmpty() && !jPath.equals("/") && path.startsWith(jPath)) {
+                            return j;
+                        }
                     }
                 } catch (Exception ignored) {}
             }
@@ -87,6 +92,23 @@ public final class JournalCatalog {
         if (j != null && j.sintaRank() != null && !j.sintaRank().isBlank() && !j.sintaRank().equals("-")) {
             return j.sintaRank();
         }
+
+        // Resolusi Dinamis On-Demand langsung ke direktori resmi SINTA
+        if (journalName != null && !journalName.isBlank() && !journalName.equals("-")) {
+            String liveRank = SintaResolver.getInstance().resolveRank(journalName, url);
+            if (liveRank != null && !liveRank.equals("-")) {
+                if (j != null) {
+                    register(new Journal(j.id(), j.name(), j.publisher(), j.garudaId(), j.coreSubject(), j.subjectId(), j.subjectName(), liveRank, j.ojsUrl(), j.oaiUrl(), j.issn(), j.eissn(), j.isActive()));
+                } else {
+                    SintaResolver.SintaInfo info = SintaResolver.getInstance().resolveInfo(journalName, url);
+                    if (info != null) {
+                        register(new Journal("sinta-" + Math.abs(journalName.hashCode()), info.journalName(), info.publisher(), info.garudaId(), "-", "-", "-", liveRank, info.ojsUrl(), "", "-", "-", true));
+                    }
+                }
+                return liveRank;
+            }
+        }
+
         return "-";
     }
 
