@@ -158,7 +158,7 @@ public class DetailInspectorPanel extends JPanel {
         doiLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (currentArticle != null && currentArticle.doi() != null && !currentArticle.doi().isBlank()) {
+                if (currentArticle != null && currentArticle.doi() != null && !currentArticle.doi().isBlank() && !currentArticle.doi().equals("-")) {
                     openBrowser("https://doi.org/" + currentArticle.doi());
                 }
             }
@@ -174,12 +174,12 @@ public class DetailInspectorPanel extends JPanel {
         urlLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (currentArticle != null && currentArticle.url() != null && !currentArticle.url().isBlank()) {
+                if (currentArticle != null && currentArticle.url() != null && !currentArticle.url().isBlank() && !currentArticle.url().equals("-")) {
                     openBrowser(currentArticle.url());
                 }
             }
         });
-        gbc.gridx = 1; gbc.gridy = 7; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 8; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(urlLabel, gbc);
 
         contentPanel.add(metaBox);
@@ -250,7 +250,14 @@ public class DetailInspectorPanel extends JPanel {
             authorsArea.setText("-");
             yearLabel.setText("-");
             doiLabel.setText("-");
+            doiLabel.setForeground(Color.GRAY);
+            doiLabel.setCursor(Cursor.getDefaultCursor());
+            doiLabel.setToolTipText(null);
+
             urlLabel.setText("-");
+            urlLabel.setForeground(Color.GRAY);
+            urlLabel.setCursor(Cursor.getDefaultCursor());
+            urlLabel.setToolTipText(null);
             abstractArea.setText("");
             openWebBtn.setEnabled(false);
             downloadPdfBtn.setEnabled(false);
@@ -311,15 +318,37 @@ public class DetailInspectorPanel extends JPanel {
 
         authorsArea.setText(article.authors() == null || article.authors().isBlank() ? "-" : article.authors().replace(";", "\n• "));
         yearLabel.setText(article.year() == null || article.year().isBlank() ? "-" : article.year());
-        doiLabel.setText(article.doi() == null || article.doi().isBlank() ? "Tidak tersedia" : article.doi());
+        String doi = article.doi();
+        if (doi != null && !doi.isBlank() && !doi.equals("-")) {
+            String displayDoi = doi.strip();
+            if (displayDoi.length() > 38) {
+                displayDoi = displayDoi.substring(0, 35) + "...";
+            }
+            doiLabel.setText("<html><a href='#' style='color:#0066cc; text-decoration:underline;'>" + escapeHtml(displayDoi) + "</a></html>");
+            doiLabel.setForeground(new Color(0, 102, 204));
+            doiLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            doiLabel.setToolTipText("Buka tautan DOI: https://doi.org/" + doi.strip());
+        } else {
+            doiLabel.setText("Tidak tersedia");
+            doiLabel.setForeground(Color.GRAY);
+            doiLabel.setCursor(Cursor.getDefaultCursor());
+            doiLabel.setToolTipText(null);
+        }
 
-        if (article.url() != null && !article.url().isBlank()) {
-            String shortUrl = article.url();
-            if (shortUrl.length() > 38) shortUrl = shortUrl.substring(0, 35) + "...";
-            urlLabel.setText(shortUrl);
-            urlLabel.setToolTipText(article.url());
+        String url = article.url();
+        if (url != null && !url.isBlank() && !url.equals("-")) {
+            String shortUrl = url.strip();
+            if (shortUrl.length() > 38) {
+                shortUrl = shortUrl.substring(0, 35) + "...";
+            }
+            urlLabel.setText("<html><a href='#' style='color:#0066cc; text-decoration:underline;'>" + escapeHtml(shortUrl) + "</a></html>");
+            urlLabel.setForeground(new Color(0, 102, 204));
+            urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            urlLabel.setToolTipText("Buka di browser: " + url.strip());
         } else {
             urlLabel.setText("-");
+            urlLabel.setForeground(Color.GRAY);
+            urlLabel.setCursor(Cursor.getDefaultCursor());
             urlLabel.setToolTipText(null);
         }
 
@@ -420,6 +449,14 @@ public class DetailInspectorPanel extends JPanel {
         label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
         label.setForeground(new Color(110, 110, 110));
         return label;
+    }
+
+    private static String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     /**
