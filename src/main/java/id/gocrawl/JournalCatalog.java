@@ -2,6 +2,7 @@ package id.gocrawl;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +30,48 @@ public final class JournalCatalog {
 
     public synchronized List<Journal> allJournals() {
         return new ArrayList<>(journalsById.values());
+    }
+
+    public synchronized Journal findByUrlOrHost(String url) {
+        if (url == null || url.isBlank()) return null;
+        String lowerUrl = url.toLowerCase(Locale.ROOT);
+        String host = "";
+        try {
+            URI u = URI.create(url);
+            if (u.getHost() != null) host = u.getHost().toLowerCase(Locale.ROOT);
+        } catch (Exception ignored) {}
+
+        for (Journal j : journalsById.values()) {
+            if (j.ojsUrl() != null && !j.ojsUrl().isBlank()) {
+                String ojsLower = j.ojsUrl().toLowerCase(Locale.ROOT);
+                if (lowerUrl.startsWith(ojsLower) || ojsLower.startsWith(lowerUrl)) {
+                    return j;
+                }
+                try {
+                    URI ju = URI.create(j.ojsUrl());
+                    if (ju.getHost() != null && !host.isEmpty() && host.equalsIgnoreCase(ju.getHost())) {
+                        return j;
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+        return null;
+    }
+
+    public synchronized String resolveOrigin(String url, String journalName) {
+        Journal j = findByUrlOrHost(url);
+        if (j != null && j.publisher() != null && !j.publisher().isBlank() && !j.publisher().equals("-")) {
+            return j.publisher();
+        }
+        if (url != null) {
+            try {
+                URI u = URI.create(url);
+                if (u.getHost() != null && !u.getHost().isBlank()) {
+                    return u.getHost();
+                }
+            } catch (Exception ignored) {}
+        }
+        return "-";
     }
 
     public synchronized int size() {

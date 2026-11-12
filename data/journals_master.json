@@ -1,7 +1,7 @@
 [
   {
     "id": "garuda-30709",
-    "name": "JAMASTIKA\\",
+    "name": "JAMASTIKA",
     "publisher": "Universitas Ngudi Waluyo",
     "garudaId": "30709",
     "subjectId": "60",
@@ -67,6 +67,76 @@
     "oaiUrl": "http://jurnal.instika.ac.id/index.php/AnilIslam/oai",
     "issn": "20854080",
     "eissn": "25287532",
+    "isActive": true
+  },
+  {
+    "id": "custom-jusan",
+    "name": "JUSAN: Jurnal Studi Agama dan Masyarakat",
+    "publisher": "IAIN Ponorogo",
+    "garudaId": "custom-jusan",
+    "subjectId": "1",
+    "subjectName": "Religion",
+    "sintaRank": "S3",
+    "ojsUrl": "https://jurnal.iainponorogo.ac.id/index.php/jusan",
+    "oaiUrl": "https://jurnal.iainponorogo.ac.id/index.php/jusan/oai",
+    "issn": "2502-8251",
+    "eissn": "2502-8251",
+    "isActive": true
+  },
+  {
+    "id": "custom-tamaddun",
+    "name": "Tamaddun: Jurnal Kebudayaan dan Sastra Islam",
+    "publisher": "IAIN Syekh Nurjati Cirebon",
+    "garudaId": "custom-tamaddun",
+    "subjectId": "1",
+    "subjectName": "Religion",
+    "sintaRank": "S2",
+    "ojsUrl": "https://www.syekhnurjati.ac.id/jurnal/index.php/tamaddun/index",
+    "oaiUrl": "https://www.syekhnurjati.ac.id/jurnal/index.php/tamaddun/oai",
+    "issn": "2303-3444",
+    "eissn": "2580-0442",
+    "isActive": true
+  },
+  {
+    "id": "custom-unusia",
+    "name": "ISLAM NUSANTARA: Journal for the Study of Islamic Culture",
+    "publisher": "Universitas Nahdlatul Ulama Indonesia (UNUSIA)",
+    "garudaId": "custom-unusia",
+    "subjectId": "1",
+    "subjectName": "Religion",
+    "sintaRank": "S2",
+    "ojsUrl": "https://journal.unusia.ac.id/ISLAMNUSANTARA",
+    "oaiUrl": "https://journal.unusia.ac.id/ISLAMNUSANTARA/oai",
+    "issn": "2579-4825",
+    "eissn": "2580-9903",
+    "isActive": true
+  },
+  {
+    "id": "custom-religions",
+    "name": "Religions",
+    "publisher": "MDPI",
+    "garudaId": "custom-religions",
+    "subjectId": "1",
+    "subjectName": "Religion",
+    "sintaRank": "Scopus Q1",
+    "ojsUrl": "https://www.mdpi.com/journal/religions/",
+    "oaiUrl": "https://www.mdpi.com/journal/religions/oai",
+    "issn": "2077-1444",
+    "eissn": "2077-1444",
+    "isActive": true
+  },
+  {
+    "id": "custom-alisnad",
+    "name": "Al-Isnad: Jurnal Kajian Hadis dan Al-Qur'an",
+    "publisher": "UIN Sayyid Ali Rahmatullah Tulungagung",
+    "garudaId": "custom-alisnad",
+    "subjectId": "1",
+    "subjectName": "Religion",
+    "sintaRank": "S3",
+    "ojsUrl": "https://ejournal.uinsaid.ac.id/al-isnad",
+    "oaiUrl": "https://ejournal.uinsaid.ac.id/al-isnad/oai",
+    "issn": "2775-5207",
+    "eissn": "2775-5207",
     "isActive": true
   }
 ]
