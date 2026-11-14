@@ -1,2 +1,2 @@
-false|true|Garuda|https://garuda.kemdiktisaintek.go.id
-true|false|Tadabbur: Jurnal Peradaban Islam|https://jim.ar-raniry.ac.id/index.php/tadabbur
+false|true|garuda|Garuda|https://garuda.kemdiktisaintek.go.id
+true|false|garuda|Tadabbur: Jurnal Peradaban Islam|https://jim.ar-raniry.ac.id/index.php/tadabbur
