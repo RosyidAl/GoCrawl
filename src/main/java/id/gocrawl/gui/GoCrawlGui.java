@@ -133,12 +133,6 @@ public class GoCrawlGui extends JFrame {
         JMenuBar menuBar = new JMenuBar();
 
         JMenu fileMenu = new JMenu("File");
-        JMenuItem addJournalItem = new JMenuItem("Tambah Jurnal Sumber...");
-        addJournalItem.addActionListener(e -> new AddJournalDialog(this, () -> {
-            initCatalog();
-            if (tablePanel != null) tablePanel.repaint();
-        }).setVisible(true));
-
         JMenuItem saveResultsItem = new JMenuItem("Simpan Hasil Pencarian...");
         saveResultsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK));
         saveResultsItem.addActionListener(e -> saveResultsManually());
@@ -149,7 +143,6 @@ public class GoCrawlGui extends JFrame {
         JMenuItem exitItem = new JMenuItem("Keluar");
         exitItem.addActionListener(e -> System.exit(0));
 
-        fileMenu.add(addJournalItem);
         fileMenu.add(saveResultsItem);
         fileMenu.add(openProjectFolderItem);
         fileMenu.addSeparator();
