@@ -263,7 +263,9 @@ public class GoCrawlGui extends JFrame {
         contentLayer = new JLayeredPane();
         contentLayer.setLayout(null);
         contentLayer.add(headerToolbar, JLayeredPane.DEFAULT_LAYER);
-        contentLayer.add(sidebar, JLayeredPane.DEFAULT_LAYER);
+        // Sidebar di layer lebih tinggi dari headerToolbar: keduanya overlap di 66px
+        // teratas saat sidebar pentok ke atas, dan nav-nya harus terlihat di atasnya
+        contentLayer.add(sidebar, JLayeredPane.PALETTE_LAYER);
         contentLayer.add(mainSplit, JLayeredPane.DEFAULT_LAYER);
         contentLayer.add(advancedSearchPanel, JLayeredPane.DEFAULT_LAYER);
         contentLayer.addComponentListener(new ComponentAdapter() {
