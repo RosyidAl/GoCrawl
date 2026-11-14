@@ -8,6 +8,14 @@
     "garudaId": "-"
   },
   {
+    "queryKey": "eduthinkjurnalpemikiranpendidikanislam",
+    "journalName": "EDUTHINK: Jurnal Pemikiran Pendidikan Islam",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
     "queryKey": "jurnalhukumadigama",
     "journalName": "Jurnal Hukum Adigama",
     "sintaRank": "-",
@@ -160,20 +168,20 @@
     "garudaId": "14925"
   },
   {
-    "queryKey": "jurnalfatwahukum",
-    "journalName": "Jurnal Fatwa Hukum",
-    "sintaRank": "-",
-    "publisher": "-",
-    "ojsUrl": "-",
-    "garudaId": "-"
-  },
-  {
     "queryKey": "journalofinnovativeandcreativity",
     "journalName": "Journal of Innovative and Creativity",
     "sintaRank": "S5",
     "publisher": "Universitas Pahlawan Tuanku Tambusai",
     "ojsUrl": "https://joecy.org/index.php/joecy",
     "garudaId": "34878"
+  },
+  {
+    "queryKey": "jurnalfatwahukum",
+    "journalName": "Jurnal Fatwa Hukum",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "islamiccommunicationjournal",
@@ -200,6 +208,14 @@
     "garudaId": "-"
   },
   {
+    "queryKey": "jurnalpendidikanguru",
+    "journalName": "Primary: Jurnal Pendidikan Guru Sekolah Dasar",
+    "sintaRank": "S2",
+    "publisher": "Universitas Riau",
+    "ojsUrl": "https://primary.ejournal.unri.ac.id/index.php/JPFKIP",
+    "garudaId": "6095"
+  },
+  {
     "queryKey": "fountainofinformaticsjournal",
     "journalName": "Fountain of Informatics Journal",
     "sintaRank": "S3",
@@ -214,6 +230,14 @@
     "publisher": "Universitas Muara Bungo",
     "ojsUrl": "https://ojs.umb-bungo.ac.id/index.php/Krinok",
     "garudaId": "22756"
+  },
+  {
+    "queryKey": "qolamunajurnalstudiislam",
+    "journalName": "Qolamuna : Jurnal Studi Islam",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "jurnalmultidisiplinerkapalamada",
@@ -248,14 +272,6 @@
     "garudaId": "-"
   },
   {
-    "queryKey": "indonesianjournalofinformaticresearchandsoftwareengineering",
-    "journalName": "Indonesian Journal of Informatic Research and Software Engineering (IJIRSE)",
-    "sintaRank": "-",
-    "publisher": "-",
-    "ojsUrl": "-",
-    "garudaId": "-"
-  },
-  {
     "queryKey": "jejakjurnalpendidikansejarahsejarah",
     "journalName": "JEJAK: Jurnal Ekonomi dan Kebijakan",
     "sintaRank": "S2",
@@ -264,12 +280,28 @@
     "garudaId": "41389"
   },
   {
+    "queryKey": "indonesianjournalofinformaticresearchandsoftwareengineering",
+    "journalName": "Indonesian Journal of Informatic Research and Software Engineering (IJIRSE)",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
     "queryKey": "jurnalmasyarakatdanbudaya",
     "journalName": "Jurnal Masyarakat dan Budaya",
     "sintaRank": "S3",
     "publisher": "Pusat Penelitian Kemasyarakatan dan Kebudayaan, LIPI",
     "ojsUrl": "http://jmb.lipi.go.id/index.php/jmb",
     "garudaId": "14662"
+  },
+  {
+    "queryKey": "rabbayanijurnalpendidikandanperadabanislami",
+    "journalName": "RABBAYANI: Jurnal Pendidikan dan Peradaban Islami",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "sistemasijurnalsisteminformasi",
@@ -288,20 +320,20 @@
     "garudaId": "18329"
   },
   {
-    "queryKey": "jurnalresti",
-    "journalName": "Jurnal RESTI (Rekayasa Sistem dan Teknologi Informasi)",
-    "sintaRank": "S2",
-    "publisher": "Ikatan Ahli Informatika Indonesia",
-    "ojsUrl": "http://jurnal.iaii.or.id/index.php/RESTI",
-    "garudaId": "10256"
-  },
-  {
     "queryKey": "jurnalrectumtinjauanyuridispenanganantindakpidana",
     "journalName": "JURNAL RECTUM: Tinjauan Yuridis Penanganan Tindak Pidana",
     "sintaRank": "S4",
     "publisher": "Universitas Darma Agung",
     "ojsUrl": "http://jurnal.darmaagung.ac.id/index.php/jurnalrectum",
     "garudaId": "20101"
+  },
+  {
+    "queryKey": "jurnalresti",
+    "journalName": "Jurnal RESTI (Rekayasa Sistem dan Teknologi Informasi)",
+    "sintaRank": "S2",
+    "publisher": "Ikatan Ahli Informatika Indonesia",
+    "ojsUrl": "http://jurnal.iaii.or.id/index.php/RESTI",
+    "garudaId": "10256"
   },
   {
     "queryKey": "islamnusantarajournalforthestudyofislamichistoryandculture",
@@ -456,6 +488,14 @@
     "garudaId": "-"
   },
   {
+    "queryKey": "jurnalilmiahekonomiislam",
+    "journalName": "Jurnal Ilmiah Ekonomi Islam",
+    "sintaRank": "S3",
+    "publisher": "LPPM STIE AAS Surakarta",
+    "ojsUrl": "http://www.jurnal.stie-aas.ac.id/index.php/jei/",
+    "garudaId": "10171"
+  },
+  {
     "queryKey": "atthariqjurnalstudiislamdanbudaya",
     "journalName": "AT-THARIQ: Jurnal Studi Islam dan Budaya",
     "sintaRank": "S5",
@@ -536,6 +576,14 @@
     "garudaId": "-"
   },
   {
+    "queryKey": "didaktikjurnalilmiahpgsdstkipsubang",
+    "journalName": "Didaktik : Jurnal Ilmiah PGSD STKIP Subang",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
     "queryKey": "jurnalhakam",
     "journalName": "Hakam : Jurnal Kajian Hukum Islam dan Hukum Ekonomi Islam",
     "sintaRank": "S2",
@@ -576,12 +624,28 @@
     "garudaId": "-"
   },
   {
+    "queryKey": "elfurqaniajurnalushuluddindanilmuilmukeislaman",
+    "journalName": "El-Furqania : Jurnal Ushuluddin dan Ilmu-Ilmu Keislaman",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
     "queryKey": "jurnalsisteminformasidanbisniscerdas",
     "journalName": "Jurnal Sistem Informasi dan Bisnis Cerdas",
     "sintaRank": "S5",
     "publisher": "Universitas Pembangunan Nasional Veteran Jawa Timur",
     "ojsUrl": "http://sibc.upnjatim.ac.id/index.php/sibc/index",
     "garudaId": "8507"
+  },
+  {
+    "queryKey": "bimasterbuletinilmiahmatematikastatistikadanterapannya",
+    "journalName": "BIMASTER : Buletin Ilmiah Matematika, Statistika dan Terapannya",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "revormajurnalpendidikandanpemikiran",
@@ -592,8 +656,8 @@
     "garudaId": "35651"
   },
   {
-    "queryKey": "bimasterbuletinilmiahmatematikastatistikadanterapannya",
-    "journalName": "BIMASTER : Buletin Ilmiah Matematika, Statistika dan Terapannya",
+    "queryKey": "faiyadhahjournalofislamiceducationmanagement",
+    "journalName": "Faiyadhah | Journal of Islamic Education Management",
     "sintaRank": "-",
     "publisher": "-",
     "ojsUrl": "-",
@@ -618,6 +682,14 @@
   {
     "queryKey": "journalofcomputernetworksarchitectureandhighperformancecomputing",
     "journalName": "Journal of Computer Networks, Architecture and High Performance Computing",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "raudhahproudtobeprofessional81",
+    "journalName": "Raudhah - Proud To Be Professional مجلد 8 عدد 1",
     "sintaRank": "-",
     "publisher": "-",
     "ojsUrl": "-",
@@ -824,6 +896,14 @@
     "garudaId": "15037"
   },
   {
+    "queryKey": "empirismajurnalpemikirandankebudayaanislam",
+    "journalName": "Empirisma: Jurnal Pemikiran dan Kebudayaan Islam",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
     "queryKey": "islamijahjournalofislamicsocialsciences",
     "journalName": "Islamijah: Journal of Islamic Social Sciences",
     "sintaRank": "S5",
@@ -848,6 +928,22 @@
     "garudaId": "-"
   },
   {
+    "queryKey": "annamatulausath",
+    "journalName": "An Namatul Ausath",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "madanijurnalilmiahmultidisiplin",
+    "journalName": "Madani: Jurnal Pengabdian Masyarakat dan Kewirausahaan",
+    "sintaRank": "S3",
+    "publisher": "Universitas Internasional Batam",
+    "ojsUrl": "https://journal.uib.ac.id/index.php/madani/index",
+    "garudaId": "31776"
+  },
+  {
     "queryKey": "griyajournalofmathematicseducationandapplication",
     "journalName": "Griya Journal of Mathematics Education and Application",
     "sintaRank": "-",
@@ -870,6 +966,14 @@
     "publisher": "Universitas Islam Negeri Imam Bonjol Padang",
     "ojsUrl": "https://ejournal.uinib.ac.id/jurnal/index.php/tarikhuna",
     "garudaId": "21450"
+  },
+  {
+    "queryKey": "jurnalekonomikiat",
+    "journalName": "Jurnal Ekonomi KIAT",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "lisanalhaljurnalpengembanganpemikirandankebudayaan",
@@ -968,6 +1072,14 @@
     "garudaId": "7291"
   },
   {
+    "queryKey": "almaktabahjurnalstudiislaminterdisiplin",
+    "journalName": "Al-Maktabah: Jurnal Studi Islam Interdisiplin",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
     "queryKey": "academiaopen",
     "journalName": "Academia Open",
     "sintaRank": "S3",
@@ -986,6 +1098,14 @@
   {
     "queryKey": "journalofsocialscienceanddigitalmarketing",
     "journalName": "Journal of Social Science and Digital Marketing",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
+  },
+  {
+    "queryKey": "jurnalilmiahpendidikankebudayaandanagama",
+    "journalName": "JURNAL ILMIAH PENDIDIKAN KEBUDAYAAN DAN AGAMA",
     "sintaRank": "-",
     "publisher": "-",
     "ojsUrl": "-",
@@ -1014,6 +1134,14 @@
     "publisher": "-",
     "ojsUrl": "-",
     "garudaId": "-"
+  },
+  {
+    "queryKey": "shautunajurnalilmiahmahasiswaperbandinganmazhabdanhukummei",
+    "journalName": "Shautuna: Jurnal Ilmiah Mahasiswa Perbandingan Mazhab",
+    "sintaRank": "S3",
+    "publisher": "Universitas Islam Negeri Alauddin Makassar",
+    "ojsUrl": "http://journal.uin-alauddin.ac.id/index.php/shautuna",
+    "garudaId": "23492"
   },
   {
     "queryKey": "causajurnalhukumdankewarganegaraan",
@@ -1182,6 +1310,14 @@
     "publisher": "Sekolah Tinggi Keguruan dan Ilmu Pendidikan Siliwangi Bandung",
     "ojsUrl": "http://e-journal.stkipsiliwangi.ac.id/index.php/semantik/index",
     "garudaId": "7096"
+  },
+  {
+    "queryKey": "annajmujurnalmanajemenpendidikanislam",
+    "journalName": "An-Najmu: Jurnal Manajemen Pendidikan Islam",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "informasiinteraktifjurnalinformatikadanteknologiinformasi",
@@ -1392,6 +1528,14 @@
     "garudaId": "7638"
   },
   {
+    "queryKey": "atthullabjurnalmahasiswastudiislam",
+    "journalName": "At-Thullab : Jurnal Pendidikan Guru Madrasah Ibtidaiyah",
+    "sintaRank": "S3",
+    "publisher": "Universitas Islam Lamongan",
+    "ojsUrl": "http://journalfai.unisla.ac.id/index.php/at-thulab",
+    "garudaId": "18662"
+  },
+  {
     "queryKey": "jurnalteknologiinformasidanmultimedia",
     "journalName": "Jurnal Teknimedia: Teknologi Informasi dan Multimedia",
     "sintaRank": "S2",
@@ -1430,6 +1574,14 @@
     "publisher": "LPPM Universitas Pahlawan Tuanku Tambusai",
     "ojsUrl": "https://journal.universitaspahlawan.ac.id/index.php/jrpp",
     "garudaId": "15592"
+  },
+  {
+    "queryKey": "altadibjurnalilmupendidikan",
+    "journalName": "Al Tadib : Jurnal Ilmu Pendidikan",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "juralrisetrumpunilmuteknik",
@@ -1488,12 +1640,28 @@
     "garudaId": "-"
   },
   {
+    "queryKey": "jurnalbinaummatmembinadanmembentengiummat",
+    "journalName": "Jurnal Bina Ummat: Membina dan Membentengi Ummat",
+    "sintaRank": "S5",
+    "publisher": "Sekolah Tinggi Ilmu Da'wah Muhammad Natsir",
+    "ojsUrl": "https://jurnal-stidnatsir.ac.id/index.php/binaummat",
+    "garudaId": "17974"
+  },
+  {
     "queryKey": "journalofinnovationresearchandknowledge",
     "journalName": "Journal of Innovation Research and Knowledge",
     "sintaRank": "S4",
     "publisher": "bajang Institute",
     "ojsUrl": "https://bajangjournal.com/index.php/JIRK",
     "garudaId": "26069"
+  },
+  {
+    "queryKey": "journalofislamicandmuhammadiyahstudies",
+    "journalName": "Journal of Islamic and Muhammadiyah Studies",
+    "sintaRank": "S5",
+    "publisher": "Universitas Muhammadiyah Sidoarjo",
+    "ojsUrl": "https://jims.umsida.ac.id/index.php/jims",
+    "garudaId": "27124"
   },
   {
     "queryKey": "lexadministratum",
@@ -1510,6 +1678,14 @@
     "publisher": "Universitas Pahlawan Tuanku Tambusai",
     "ojsUrl": "https://jptam.org/index.php/jptam",
     "garudaId": "13365"
+  },
+  {
+    "queryKey": "alqiblahjurnalstudiislamdanbahasaarab",
+    "journalName": "AL-QIBLAH: Jurnal Studi Islam dan Bahasa Arab",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "hadharahjurnalkeislamandanperadaban",

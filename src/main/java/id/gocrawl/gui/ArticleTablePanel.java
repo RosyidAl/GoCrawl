@@ -42,14 +42,13 @@ public class ArticleTablePanel extends JPanel {
     private final TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
     private final JTextField filterField = new JTextField(18);
 
-    private final JLabel countLabel = new JLabel("Menampilkan: 0 artikel");
+    private final JLabel countLabel = new JLabel("0 artikel");
     private final JButton firstPageBtn = new JButton("«");
     private final JButton prevPageBtn = new JButton("‹");
-    private final JLabel pageInfoLabel = new JLabel("1 / 1");
+    private final JTextField jumpPageField = new JTextField(3);
+    private final JLabel pageTotalLabel = new JLabel("/ 1");
     private final JButton nextPageBtn = new JButton("›");
     private final JButton lastPageBtn = new JButton("»");
-    private final JTextField jumpPageField = new JTextField(3);
-    private final JButton jumpBtn = new JButton("Buka");
     private final JComboBox<Integer> pageSizeComboBox = new JComboBox<>(new Integer[]{10, 20, 25, 50});
 
     private final JProgressBar progressBar = new JProgressBar();
@@ -121,6 +120,8 @@ public class ArticleTablePanel extends JPanel {
         // 3. Bilah Status Bawah
         JPanel bottomPanel = new JPanel(new BorderLayout(8, 0));
         bottomPanel.setBorder(new EmptyBorder(2, 6, 8, 6));
+        countLabel.setFont(countLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        countLabel.setForeground(new Color(110, 110, 110));
         bottomPanel.add(countLabel, BorderLayout.WEST);
 
         JPanel centerBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
@@ -137,8 +138,9 @@ public class ArticleTablePanel extends JPanel {
         prevPageBtn.setEnabled(false);
         prevPageBtn.addActionListener(e -> changePage(currentPage - 1));
 
-        pageInfoLabel.setFont(pageInfoLabel.getFont().deriveFont(Font.PLAIN, 12f));
-        pageInfoLabel.setBorder(new EmptyBorder(0, 8, 0, 8));
+        pageTotalLabel.setFont(pageTotalLabel.getFont().deriveFont(Font.PLAIN, 12f));
+        pageTotalLabel.setForeground(new Color(110, 110, 110));
+        pageTotalLabel.setBorder(new EmptyBorder(0, 2, 0, 8));
 
         nextPageBtn.setFont(nextPageBtn.getFont().deriveFont(Font.BOLD, 15f));
         nextPageBtn.setToolTipText("Halaman Berikutnya");
@@ -154,15 +156,12 @@ public class ArticleTablePanel extends JPanel {
 
         jumpPageField.setHorizontalAlignment(JTextField.CENTER);
         jumpPageField.setPreferredSize(new Dimension(44, 26));
-        jumpPageField.setToolTipText("Ketik nomor halaman lalu tekan Enter atau klik Buka");
+        jumpPageField.setToolTipText("Ketik nomor halaman lalu tekan Enter");
         jumpPageField.addActionListener(e -> triggerJump());
-
-        jumpBtn.setPreferredSize(new Dimension(65, 26));
-        jumpBtn.addActionListener(e -> triggerJump());
 
         pageSizeComboBox.setPreferredSize(new Dimension(58, 26));
         pageSizeComboBox.setSelectedItem(25);
-        pageSizeComboBox.setToolTipText("Jumlah artikel yang ditampilkan per halaman (Default: 25)");
+        pageSizeComboBox.setToolTipText("Artikel per halaman");
         pageSizeComboBox.addActionListener(e -> {
             if (onPageSizeChange != null) {
                 onPageSizeChange.accept(getPageSize());
@@ -171,17 +170,11 @@ public class ArticleTablePanel extends JPanel {
 
         centerBox.add(firstPageBtn);
         centerBox.add(prevPageBtn);
-        centerBox.add(pageInfoLabel);
+        centerBox.add(jumpPageField);
+        centerBox.add(pageTotalLabel);
         centerBox.add(nextPageBtn);
         centerBox.add(lastPageBtn);
-        centerBox.add(paginationSeparator());
-        centerBox.add(new JLabel("Ke:"));
-        centerBox.add(jumpPageField);
-        centerBox.add(jumpBtn);
-        centerBox.add(paginationSeparator());
-        centerBox.add(new JLabel("Tampilkan:"));
         centerBox.add(pageSizeComboBox);
-        centerBox.add(new JLabel("/ hal"));
         bottomPanel.add(centerBox, BorderLayout.CENTER);
 
         JPanel progressBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
@@ -303,13 +296,6 @@ public class ArticleTablePanel extends JPanel {
         updateCountLabel();
     }
 
-    /** Pemisah tipis vertikal antar kelompok kontrol di bilah paginasi. */
-    private JComponent paginationSeparator() {
-        JSeparator separator = new JSeparator(SwingConstants.VERTICAL);
-        separator.setPreferredSize(new Dimension(1, 20));
-        return separator;
-    }
-
     public synchronized void addArticle(Article article) {
         if (article == null) return;
         SwingUtilities.invokeLater(() -> {
@@ -389,13 +375,13 @@ public class ArticleTablePanel extends JPanel {
         this.totalRecords = totalRecs;
 
         SwingUtilities.invokeLater(() -> {
-            pageInfoLabel.setText(currentPage + " / " + totalPages);
+            jumpPageField.setText(String.valueOf(currentPage));
+            pageTotalLabel.setText("/ " + totalPages);
             firstPageBtn.setEnabled(currentPage > 1);
             prevPageBtn.setEnabled(currentPage > 1);
             nextPageBtn.setEnabled(currentPage < totalPages);
             lastPageBtn.setEnabled(currentPage < totalPages);
-            jumpPageField.setText(String.valueOf(currentPage));
-            countLabel.setText("Hal " + currentPage + " (" + currentCount + " artikel) — Total: " + totalRecs);
+            countLabel.setText(currentCount + " artikel · Total " + totalRecs);
         });
     }
 
@@ -406,7 +392,6 @@ public class ArticleTablePanel extends JPanel {
             nextPageBtn.setEnabled(enabled && currentPage < totalPages);
             lastPageBtn.setEnabled(enabled && currentPage < totalPages);
             jumpPageField.setEnabled(enabled);
-            jumpBtn.setEnabled(enabled);
             pageSizeComboBox.setEnabled(enabled);
         });
     }
@@ -478,9 +463,9 @@ public class ArticleTablePanel extends JPanel {
         int visible = table.getRowCount();
         int total = allArticles.size();
         if (visible == total) {
-            countLabel.setText("Menampilkan: " + total + " artikel");
+            countLabel.setText(total + " artikel");
         } else {
-            countLabel.setText("Menampilkan: " + visible + " dari " + total + " artikel");
+            countLabel.setText(visible + " dari " + total + " artikel");
         }
     }
 
