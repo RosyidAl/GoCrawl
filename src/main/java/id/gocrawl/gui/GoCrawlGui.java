@@ -6,7 +6,15 @@ import id.gocrawl.*;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.LineBorder;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -30,11 +38,29 @@ public class GoCrawlGui extends JFrame {
         }
     }
 
+    /** Warna tombol Cari (biru) dan tombol Stop (merah) pada baris pencarian. */
+    private static final Color SEARCH_BTN_BLUE = new Color(0, 114, 188);
+    private static final Color SEARCH_BTN_RED = new Color(198, 40, 40);
+
+    /** Lebar kolom sidebar; sekaligus garis potong kiri bar pencarian (tepi kanan sidebar). */
+    private static final int SIDEBAR_WIDTH = 220;
+
     private final JTextField keywordField = new JTextField(20);
     private final JComboBox<SintaFilterItem> sintaComboBox = new JComboBox<>();
     private final JTextField fromYearField = new JTextField("2021", 5);
     private final JTextField toYearField = new JTextField("2026", 5);
-    private final JButton crawlBtn = new JButton("Mulai Crawl");
+    private final JButton crawlBtn = new JButton("🔍 Cari");
+    private final JTextField advancedJournalField = new JTextField();
+    private final JTextField advancedAuthorField = new JTextField();
+    private final JTextField advancedAffiliationField = new JTextField();
+    private JPanel advancedSearchPanel;
+    private JLayeredPane contentLayer;
+    private JPanel searchControls;
+    private JPanel headerToolbar;
+    private JSplitPane mainSplit;
+    private JPanel sidebar;
+    private final JLabel projectPathLabel = new JLabel("Default workspace");
+    private Path activeProject = Path.of(".").toAbsolutePath().normalize();
 
     private JournalCatalog catalog;
     private ArticleTablePanel tablePanel;
@@ -77,7 +103,7 @@ public class GoCrawlGui extends JFrame {
 
     private void initUI() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1320, 780);
+        setSize(1440, 820);
         setMinimumSize(new Dimension(980, 580));
         setLocationRelativeTo(null);
 
@@ -94,11 +120,16 @@ public class GoCrawlGui extends JFrame {
             if (tablePanel != null) tablePanel.repaint();
         }).setVisible(true));
 
+        JMenuItem saveResultsItem = new JMenuItem("Simpan Hasil Pencarian...");
+        saveResultsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK));
+        saveResultsItem.addActionListener(e -> saveResultsManually());
+
         JMenuItem exitItem = new JMenuItem("Keluar");
         exitItem.addActionListener(e -> System.exit(0));
 
         fileMenu.add(viewJournalsFileItem);
         fileMenu.add(addJournalItem);
+        fileMenu.add(saveResultsItem);
         fileMenu.addSeparator();
         fileMenu.add(exitItem);
         menuBar.add(fileMenu);
@@ -111,15 +142,21 @@ public class GoCrawlGui extends JFrame {
 
         setJMenuBar(menuBar);
 
-        // 2. Toolbar Atas
-        JPanel headerToolbar = new JPanel(new BorderLayout(10, 0));
+        // 2. Toolbar Atas (baris pencarian saja — baris filter lanjutan diposisikan
+        // terpisah di contentLayer agar sidebar tidak ikut turun)
+        headerToolbar = new JPanel(new BorderLayout(10, 0));
         headerToolbar.setBorder(new EmptyBorder(10, 14, 10, 14));
 
-        // Judul Aplikasi
+        // Judul Aplikasi — kolomnya dibuat selebar sidebar, sehingga bar pencarian
+        // di potong (mulai) tepat di tepi kanan sidebar
         JPanel brandBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         JLabel titleLabel = new JLabel("GoCrawl");
         titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 17f));
         brandBox.add(titleLabel);
+        // 14px = margin kiri headerToolbar, dikoreksi agar tepi kanan kolom brand
+        // = tepi kanan sidebar (220 + 5 divider), sehingga bar pencarian mulai
+        // persis di garis potong sidebar
+        brandBox.setPreferredSize(new Dimension(SIDEBAR_WIDTH + 5 - 14, brandBox.getPreferredSize().height));
 
         headerToolbar.add(brandBox, BorderLayout.WEST);
 
@@ -134,26 +171,39 @@ public class GoCrawlGui extends JFrame {
         sintaComboBox.setPreferredSize(new Dimension(115, 28));
         sintaComboBox.setToolTipText("Filter batas minimal peringkat akreditasi jurnal");
 
-        // Kontrol Pencarian di Tengah Toolbar
-        JPanel searchControls = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
-        searchControls.add(new JLabel("Kata Kunci:"));
-        searchControls.add(keywordField);
+        // Baris pencarian gaya "Find articles": tiga kolom input berlabel di atasnya,
+        // tanpa kotak biru pembungkus, tombol Cari biru, dan tautan Pencarian Lanjutan
+        crawlBtn.setText("🔍 Cari");
+        crawlBtn.setFont(crawlBtn.getFont().deriveFont(Font.BOLD, 12f));
+        crawlBtn.setBackground(SEARCH_BTN_BLUE);
+        crawlBtn.setForeground(Color.WHITE);
+        crawlBtn.setPreferredSize(new Dimension(95, 30));
 
-        searchControls.add(new JLabel("Akreditasi:"));
-        searchControls.add(sintaComboBox);
+        advancedSearchPanel = createAdvancedSearchPanel();
+        advancedSearchPanel.setVisible(false);
+        JButton advancedSearchButton = new JButton("Pencarian Lanjutan ▾");
+        advancedSearchButton.putClientProperty("JButton.buttonType", "toolBarButton");
+        advancedSearchButton.addActionListener(e -> toggleAdvancedSearch(advancedSearchButton));
 
-        searchControls.add(new JLabel("Tahun:"));
-        searchControls.add(fromYearField);
-        searchControls.add(new JLabel("-"));
-        searchControls.add(toYearField);
+        // Esc menutup baris filter lanjutan (no-op saat memang sudah tertutup)
+        advancedSearchPanel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke("ESCAPE"), "tutupPencarianLanjutan");
+        advancedSearchPanel.getActionMap().put("tutupPencarianLanjutan", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent evt) {
+                if (advancedSearchPanel.isVisible()) {
+                    toggleAdvancedSearch(advancedSearchButton);
+                }
+            }
+        });
 
-        // Tombol Mulai Crawl / ■ Stop
-        crawlBtn.setFont(crawlBtn.getFont().deriveFont(Font.BOLD));
-        crawlBtn.setPreferredSize(new Dimension(120, 30));
-        searchControls.add(crawlBtn);
+        searchControls = createSearchBar(advancedSearchButton);
 
-        headerToolbar.add(searchControls, BorderLayout.CENTER);
-        add(headerToolbar, BorderLayout.NORTH);
+        // Wrapper FlowLayout kanan: baris pencarian digeser mentok ke tepi kanan jendela
+        JPanel searchArea = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        searchArea.setOpaque(false);
+        searchArea.add(searchControls);
+        headerToolbar.add(searchArea, BorderLayout.CENTER);
+        
 
         // 3. Tata Letak Bersih 2-Panel (Tabel Artikel di Kiri/Tengah & Detail Inspector di Kanan)
         inspectorPanel = new DetailInspectorPanel(catalog);
@@ -171,11 +221,28 @@ public class GoCrawlGui extends JFrame {
             }
         });
 
-        JSplitPane mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tablePanel, inspectorPanel);
+        // Sidebar dan area konten diposisikan langsung di contentLayer (tanpa appSplit):
+        // saat baris filter lanjutan terbuka, hanya area konten tengah yang turun —
+        // sidebar tetap menempel di bawah bar pencarian
+        mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tablePanel, inspectorPanel);
         mainSplit.setResizeWeight(0.68);
         mainSplit.setDividerSize(6);
 
-        add(mainSplit, BorderLayout.CENTER);
+        sidebar = createSidebar();
+
+        contentLayer = new JLayeredPane();
+        contentLayer.setLayout(null);
+        contentLayer.add(headerToolbar, JLayeredPane.DEFAULT_LAYER);
+        contentLayer.add(sidebar, JLayeredPane.DEFAULT_LAYER);
+        contentLayer.add(mainSplit, JLayeredPane.DEFAULT_LAYER);
+        contentLayer.add(advancedSearchPanel, JLayeredPane.DEFAULT_LAYER);
+        contentLayer.addComponentListener(new ComponentAdapter() {
+            @Override public void componentResized(ComponentEvent e) {
+                layoutContentLayer();
+            }
+        });
+        add(contentLayer, BorderLayout.CENTER);
+        SwingUtilities.invokeLater(this::layoutContentLayer);
 
         // Pesan Awal
         tablePanel.setProgress(false, "Ketikkan kata kunci pencarian lalu tekan Enter atau klik 'Mulai Crawl'.");
@@ -183,6 +250,201 @@ public class GoCrawlGui extends JFrame {
         // Event Handlers
         crawlBtn.addActionListener(e -> handleCrawlToggle());
         keywordField.addActionListener(e -> handleCrawlToggle());
+    }
+
+    private JPanel createSidebar() {
+        JPanel sidebar = new JPanel(new BorderLayout(0, 12));
+        sidebar.setBorder(new EmptyBorder(18, 14, 14, 12));
+        sidebar.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 500));
+        sidebar.setBackground(new Color(248, 249, 252));
+        JPanel project = new JPanel();
+        project.setOpaque(false);
+        project.setLayout(new BoxLayout(project, BoxLayout.Y_AXIS));
+        JLabel heading = new JLabel("PROYEK SAAT INI");
+        heading.setFont(heading.getFont().deriveFont(Font.BOLD, 10f));
+        heading.setForeground(new Color(105, 112, 125));
+        project.add(heading);
+        project.add(Box.createVerticalStrut(8));
+        projectPathLabel.setFont(projectPathLabel.getFont().deriveFont(Font.BOLD, 13f));
+        projectPathLabel.setToolTipText(activeProject.toString());
+        project.add(projectPathLabel);
+        project.add(Box.createVerticalStrut(8));
+        JButton manage = new JButton("Buka Folder Proyek…");
+        manage.setAlignmentX(Component.LEFT_ALIGNMENT);
+        manage.addActionListener(e -> chooseProjectFolder());
+        project.add(manage);
+        project.add(Box.createVerticalStrut(5));
+        JButton create = new JButton("Buat Proyek Baru…");
+        create.setAlignmentX(Component.LEFT_ALIGNMENT);
+        create.addActionListener(e -> createProjectFolder());
+        project.add(create);
+        sidebar.add(project, BorderLayout.NORTH);
+        JPanel nav = new JPanel();
+        nav.setOpaque(false);
+        nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
+        JLabel all = new JLabel("▤   Semua Artikel");
+        all.setOpaque(true);
+        all.setBackground(new Color(228, 235, 251));
+        all.setForeground(new Color(48, 78, 158));
+        all.setBorder(new EmptyBorder(10, 9, 10, 6));
+        all.setAlignmentX(Component.LEFT_ALIGNMENT);
+        nav.add(all);
+        sidebar.add(nav, BorderLayout.CENTER);
+        return sidebar;
+    }
+
+    private void chooseProjectFolder() {
+        JFileChooser chooser = new JFileChooser(activeProject.toFile());
+        chooser.setDialogTitle("Pilih folder proyek");
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setAcceptAllFileFilterUsed(false);
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            activeProject = chooser.getSelectedFile().toPath().toAbsolutePath().normalize();
+            projectPathLabel.setText(activeProject.getFileName() == null ? activeProject.toString() : activeProject.getFileName().toString());
+            projectPathLabel.setToolTipText(activeProject.toString());
+        }
+    }
+
+    private void createProjectFolder() {
+        String name = JOptionPane.showInputDialog(this, "Nama proyek baru:", "Buat Proyek", JOptionPane.PLAIN_MESSAGE);
+        if (name == null) return;
+        name = name.strip();
+        if (name.isEmpty() || name.contains("/") || name.contains("\\") || name.equals(".") || name.equals("..")) {
+            JOptionPane.showMessageDialog(this, "Masukkan nama folder proyek yang valid.", "Nama Proyek", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        Path projectsRoot = Path.of("projects").toAbsolutePath().normalize();
+        Path newProject = projectsRoot.resolve(name).normalize();
+        if (!newProject.getParent().equals(projectsRoot)) {
+            JOptionPane.showMessageDialog(this, "Nama proyek tidak valid.", "Nama Proyek", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            Files.createDirectories(newProject);
+            activeProject = newProject;
+            projectPathLabel.setText(name);
+            projectPathLabel.setToolTipText(activeProject.toString());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Gagal membuat proyek: " + ex.getMessage(), "Proyek", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Bar pencarian gaya "Find articles": tiga kolom berlabel + tombol Cari + tautan lanjutan. */
+    private JPanel createSearchBar(JButton advancedSearchButton) {
+        JPanel bar = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridy = 0;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(0, 0, 0, 10);
+
+        c.weightx = 0.36;
+        bar.add(createLabeledSearchField("Cari artikel dengan kata kunci", keywordField), c);
+        c.weightx = 0.36;
+        bar.add(createLabeledSearchField("Dalam judul jurnal atau buku", advancedJournalField), c);
+        c.weightx = 0.18;
+        bar.add(createLabeledSearchField("Penulis", advancedAuthorField), c);
+
+        c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
+        // Rata bawah sel agar tombol sejajar (level) dengan baris field, bukan center
+        // terhadap label + field
+        c.anchor = GridBagConstraints.SOUTH;
+        c.insets = new Insets(0, 0, 0, 4);
+        bar.add(crawlBtn, c);
+        bar.add(advancedSearchButton, c);
+        return bar;
+    }
+
+    /** Pasangan label kecil di atas field input (meniru gaya ScienceDirect). */
+    private JPanel createLabeledSearchField(String label, JTextField field) {
+        JPanel box = new JPanel(new BorderLayout(0, 2));
+        box.setOpaque(false);
+        JLabel heading = new JLabel(label);
+        heading.setFont(heading.getFont().deriveFont(Font.PLAIN, 11f));
+        heading.setForeground(new Color(75, 75, 75));
+        // Label direntangkan selebar field (BorderLayout.NORTH) dengan teks rata kiri,
+        // sehingga selalu nempel tepat di tepi kiri field-nya
+        heading.setHorizontalAlignment(JLabel.LEFT);
+        box.add(heading, BorderLayout.NORTH);
+        box.add(field, BorderLayout.CENTER);
+        return box;
+    }
+
+    /** Baris filter lanjutan: satu baris kompak inline di bawah bar pencarian. */
+    private JPanel createAdvancedSearchPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
+        panel.setOpaque(false); // tanpa kotak putih pembungkus
+
+        panel.add(createInlineLabel("Afiliasi:"));
+        advancedAffiliationField.setColumns(24); // Field terlebar di baris filter
+        panel.add(advancedAffiliationField);
+        panel.add(createInlineLabel("Akreditasi:"));
+        panel.add(sintaComboBox);
+        panel.add(createInlineLabel("Rentang tahun:"));
+        panel.add(fromYearField);
+        panel.add(createInlineLabel("hingga"));
+        panel.add(toYearField);
+
+        Font searchFont = keywordField.getFont();
+        for (Component component : new Component[]{advancedAffiliationField, sintaComboBox, fromYearField, toYearField}) {
+            component.setFont(searchFont);
+        }
+        return panel;
+    }
+
+    private JLabel createInlineLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(label.getFont().deriveFont(Font.PLAIN, 11f));
+        label.setForeground(new Color(75, 75, 75));
+        return label;
+    }
+
+    private void layoutContentLayer() {
+        int headerHeight = headerToolbar.getPreferredSize().height;
+        boolean filterOpen = advancedSearchPanel.isVisible();
+        int filterHeight = filterOpen ? advancedSearchPanel.getPreferredSize().height : 0;
+
+        headerToolbar.setBounds(0, 0, contentLayer.getWidth(), headerHeight);
+
+        // Sidebar tidak ikut turun: tetap menempel di bawah bar pencarian
+        sidebar.setBounds(0, headerHeight, SIDEBAR_WIDTH,
+                Math.max(0, contentLayer.getHeight() - headerHeight));
+
+        // Baris filter lanjutan hanya mengisi area di kanan sidebar (rata dengan bar)
+        if (filterOpen) {
+            advancedSearchPanel.setBounds(SIDEBAR_WIDTH + 5, headerHeight,
+                    Math.max(0, contentLayer.getWidth() - SIDEBAR_WIDTH - 5),
+                    advancedSearchPanel.getPreferredSize().height);
+        }
+
+        // Hanya konten tengah (tabel + inspector) yang turun mengikuti baris filter
+        int contentTop = headerHeight + filterHeight;
+        mainSplit.setBounds(SIDEBAR_WIDTH + 5, contentTop,
+                Math.max(0, contentLayer.getWidth() - SIDEBAR_WIDTH - 5),
+                Math.max(0, contentLayer.getHeight() - contentTop));
+        updateSearchControlsWidth();
+    }
+
+    /** Menghitung lebar bar pencarian: dari tepi kiri wrapper hingga margin kanan header (mentok kanan). */
+    private void updateSearchControlsWidth() {
+        if (searchControls == null || searchControls.getParent() == null || contentLayer == null) return;
+        Container searchArea = searchControls.getParent();
+        Point areaLeft = SwingUtilities.convertPoint(searchArea, 0, 0, contentLayer);
+        int width = Math.max(460, contentLayer.getWidth() - areaLeft.x - 14);
+        Dimension pref = searchControls.getPreferredSize();
+        if (width != pref.width) {
+            searchControls.setPreferredSize(new Dimension(width, pref.height));
+            searchControls.revalidate();
+        }
+    }
+
+    /** Toggle baris filter lanjutan: memunculkan/menyembunyikan baris kedua di header. */
+    private void toggleAdvancedSearch(JButton anchor) {
+        boolean visible = !advancedSearchPanel.isVisible();
+        advancedSearchPanel.setVisible(visible);
+        anchor.setText(visible ? "Pencarian Lanjutan ▴" : "Pencarian Lanjutan ▾");
+        // Tinggi header berubah saat panel muncul/hilang → hitung ulang batas konten
+        layoutContentLayer();
     }
 
     private void showIndexedJournals() {
@@ -195,14 +457,15 @@ public class GoCrawlGui extends JFrame {
     private void handleCrawlToggle() {
         if (currentSearchWorker != null && !currentSearchWorker.isDone()) {
             currentSearchWorker.cancel(true);
-            crawlBtn.setText("Mulai Crawl");
-            crawlBtn.setForeground(null);
+            crawlBtn.setText("🔍 Cari");
+            crawlBtn.setBackground(SEARCH_BTN_BLUE);
+            crawlBtn.setForeground(Color.WHITE);
             tablePanel.setProgress(false, "Penelusuran dihentikan oleh pengguna.");
             tablePanel.setPaginationEnabled(true);
             return;
         }
 
-        String keyword = keywordField.getText().strip();
+        String keyword = buildAdvancedQuery();
         if (keyword.isEmpty()) {
             JOptionPane.showMessageDialog(this,
                     "Ketikkan kata kunci pencarian terlebih dahulu (cth: 'pendidikan karakter', 'deep learning').",
@@ -250,6 +513,15 @@ public class GoCrawlGui extends JFrame {
         loadPage(1);
     }
 
+    private String buildAdvancedQuery() {
+        List<String> terms = new ArrayList<>();
+        if (!keywordField.getText().isBlank()) terms.add(keywordField.getText().strip());
+        if (!advancedJournalField.getText().isBlank()) terms.add(advancedJournalField.getText().strip());
+        if (!advancedAuthorField.getText().isBlank()) terms.add(advancedAuthorField.getText().strip());
+        if (!advancedAffiliationField.getText().isBlank()) terms.add(advancedAffiliationField.getText().strip());
+        return String.join(" ", terms).strip();
+    }
+
     private void loadPage(int page) {
         if (currentSearchWorker != null && !currentSearchWorker.isDone()) {
             currentSearchWorker.cancel(true);
@@ -274,7 +546,8 @@ public class GoCrawlGui extends JFrame {
         }
 
         crawlBtn.setText("■ Stop");
-        crawlBtn.setForeground(Color.RED);
+        crawlBtn.setBackground(SEARCH_BTN_RED);
+        crawlBtn.setForeground(Color.WHITE);
         tablePanel.setPaginationEnabled(false);
         tablePanel.setProgress(true, "Memuat Halaman " + page + (totalSearchPages > 1 ? " dari " + totalSearchPages : "") + " (" + activePageSize + " artikel/hal)...");
 
@@ -444,6 +717,46 @@ public class GoCrawlGui extends JFrame {
         };
 
         currentSearchWorker.execute();
+    }
+
+    /**
+     * Menu "File → Simpan Hasil Pencarian": menyimpan akumulasi hasil crawl saat ini
+     * (masterArticleList, sudah dideduplikasi) ke berkas JSON pilihan pengguna.
+     * Dialog dibuka di folder proyek aktif.
+     */
+    private void saveResultsManually() {
+        if (masterArticleList.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Belum ada hasil pencarian untuk disimpan. Jalankan pencarian terlebih dahulu.",
+                    "Simpan Hasil Pencarian",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        JFileChooser chooser = new JFileChooser(activeProject.toFile());
+        chooser.setDialogTitle("Simpan Hasil Pencarian");
+        chooser.setSelectedFile(new File("articles.json"));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) return;
+
+        Path target = chooser.getSelectedFile().toPath();
+        if (!target.getFileName().toString().toLowerCase().endsWith(".json")) {
+            target = target.resolveSibling(target.getFileName().toString() + ".json");
+        }
+        if (Files.exists(target)) {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    "Berkas \"" + target.getFileName() + "\" sudah ada. Timpa?",
+                    "Simpan Hasil Pencarian", JOptionPane.YES_NO_OPTION);
+            if (confirm != JOptionPane.YES_OPTION) return;
+        }
+        try {
+            ArticleStorage.saveJson(target, masterArticleList);
+            JOptionPane.showMessageDialog(this,
+                    "Berhasil menyimpan " + masterArticleList.size() + " artikel ke:\n" + target,
+                    "Simpan Hasil Pencarian", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Gagal menyimpan: " + ex.getMessage(),
+                    "Simpan Hasil Pencarian", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void saveSearchOutput() {

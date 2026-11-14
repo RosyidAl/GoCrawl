@@ -46,6 +46,10 @@ public final class Main {
     }
 
     public static void main(String[] args) {
+        if (args.length == 0 || (args.length == 1 && args[0].equalsIgnoreCase("--gui"))) {
+            id.gocrawl.gui.GoCrawlGui.launch();
+            return;
+        }
         try {
             Options options = Options.parse(args);
             if (options.help) {
@@ -182,7 +186,7 @@ public final class Main {
         System.out.println("Gunakan flag --area <ID/Nama> saat panen katalog, contoh: --harvest-catalog --area 60");
     }
 
-    private static List<URI> readTargets(Path path) throws IOException {
+    public static List<URI> readTargets(Path path) throws IOException {
         if (!Files.isRegularFile(path)) {
             throw new FileNotFoundException("File target tidak ditemukan: " + path.toAbsolutePath());
         }
@@ -290,6 +294,7 @@ public final class Main {
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
                     case "--help", "-h" -> help = true;
+                    case "--gui" -> {} // Ditangani pada main()
                     case "--list-fields" -> listFields = true;
                     case "--harvest-catalog" -> harvestCatalog = true;
                     case "--area", "--field" -> area = requireValue(args, ++i, args[i - 1]);
@@ -335,7 +340,11 @@ public final class Main {
         void accept(Article article) throws IOException;
     }
 
-    private static final class OjsCrawler {
+    public static void crawlTarget(URI target, Options options, ArticleSink sink) throws Exception {
+        new OjsCrawler().crawl(target, options, sink);
+    }
+
+    public static final class OjsCrawler {
         private final Set<String> visited = ConcurrentHashMap.newKeySet();
         private final DeduplicationEngine dedup = new DeduplicationEngine();
         private final List<Future<?>> articleTasks = new CopyOnWriteArrayList<>();

@@ -55,13 +55,14 @@ public class DetailInspectorPanel extends JPanel {
 
     private void initUI() {
         setLayout(new BorderLayout(0, 0));
-        setBorder(new EmptyBorder(10, 10, 10, 10));
+        // Padding kiri tipis agar konten tidak terkesan terdesak ke kanan
+        setBorder(new EmptyBorder(10, 4, 10, 10));
         setMinimumSize(new Dimension(320, 400));
         setPreferredSize(new Dimension(380, 650));
 
         // 1. Header Atas
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBorder(new EmptyBorder(0, 4, 8, 4));
+        headerPanel.setBorder(new EmptyBorder(0, 2, 8, 4));
         JLabel headerLabel = new JLabel("RINCIAN METADATA ARTIKEL");
         headerLabel.setFont(headerLabel.getFont().deriveFont(Font.BOLD, 11f));
         headerLabel.setForeground(new Color(110, 110, 110));
@@ -75,7 +76,7 @@ public class DetailInspectorPanel extends JPanel {
         JPanel titleCard = new JPanel(new BorderLayout());
         titleCard.setBorder(new CompoundBorder(
                 new LineBorder(new Color(220, 220, 220), 1, true),
-                new EmptyBorder(10, 12, 10, 12)
+                new EmptyBorder(10, 10, 10, 10)
         ));
         titleArea.setEditable(false);
         titleArea.setLineWrap(true);
@@ -90,7 +91,7 @@ public class DetailInspectorPanel extends JPanel {
         JPanel metaBox = new JPanel(new GridBagLayout());
         metaBox.setBorder(new CompoundBorder(
                 new LineBorder(new Color(220, 220, 220), 1, true),
-                new EmptyBorder(10, 12, 10, 12)
+                new EmptyBorder(10, 10, 10, 10)
         ));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(3, 2, 3, 2);
@@ -98,7 +99,7 @@ public class DetailInspectorPanel extends JPanel {
 
         // Asal / Penerbit
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Asal / Penerbit:"), gbc);
+        metaBox.add(createFieldLabel("Penerbit:"), gbc);
         originLabel.setFont(originLabel.getFont().deriveFont(Font.BOLD));
         originLabel.setForeground(new Color(30, 80, 180));
         gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -120,7 +121,7 @@ public class DetailInspectorPanel extends JPanel {
 
         // Bidang / Subjek
         gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Bidang / Subjek:"), gbc);
+        metaBox.add(createFieldLabel("Bidang:"), gbc);
         subjectLabel.setForeground(new Color(60, 120, 60));
         subjectLabel.setFont(subjectLabel.getFont().deriveFont(Font.BOLD));
         gbc.gridx = 1; gbc.gridy = 3; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -189,7 +190,7 @@ public class DetailInspectorPanel extends JPanel {
         JPanel abstractCard = new JPanel(new BorderLayout(0, 6));
         abstractCard.setBorder(new CompoundBorder(
                 new LineBorder(new Color(220, 220, 220), 1, true),
-                new EmptyBorder(10, 12, 10, 12)
+                new EmptyBorder(10, 10, 10, 10)
         ));
         JLabel absTitle = new JLabel("ABSTRAK LENGKAP");
         absTitle.setFont(absTitle.getFont().deriveFont(Font.BOLD, 11f));
@@ -381,12 +382,16 @@ public class DetailInspectorPanel extends JPanel {
         downloadStatusLabel.setText("Mencari berkas PDF di portal OJS...");
         downloadStatusLabel.setForeground(Color.BLUE);
 
+        // Kunci artikel yang diunduh sekarang: jika pengguna memilih artikel lain
+        // selagi unduhan berjalan, proses tetap mengunduh artikel yang benar
+        Article articleToDownload = currentArticle;
+
         SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
             private String resolvedUrl = "";
 
             @Override
             protected Boolean doInBackground() throws Exception {
-                Document doc = Jsoup.connect(currentArticle.url())
+                Document doc = Jsoup.connect(articleToDownload.url())
                         .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) GoCrawl PDF Downloader")
                         .timeout(5000)
                         .followRedirects(true)
@@ -426,7 +431,8 @@ public class DetailInspectorPanel extends JPanel {
                     downloadStatusLabel.setText("PDF berhasil diunduh ke: " + targetFile.getName());
                     downloadStatusLabel.setForeground(new Color(34, 139, 34));
                 } catch (Exception ex) {
-                    downloadStatusLabel.setText("Gagal mengunduh PDF: " + ex.getMessage());
+                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                    downloadStatusLabel.setText("Gagal mengunduh PDF: " + cause.getMessage());
                     downloadStatusLabel.setForeground(Color.RED);
                 }
             }
@@ -466,7 +472,7 @@ public class DetailInspectorPanel extends JPanel {
     private static class ResponsiveScrollPanel extends JPanel implements Scrollable {
         public ResponsiveScrollPanel() {
             setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-            setBorder(new EmptyBorder(4, 4, 10, 4));
+            setBorder(new EmptyBorder(4, 2, 10, 4));
         }
 
         @Override
