@@ -177,15 +177,11 @@ public class GoCrawlGui extends JFrame {
         headerToolbar = new JPanel(new BorderLayout(10, 0));
         headerToolbar.setBorder(new EmptyBorder(10, 14, 10, 14));
 
-        // Kolom kiri header: tombol toggle sidebar di pojok kiri atas. Kolomnya tetap
-        // selebar sidebar (dikoreksi margin kiri 14px) agar bar pencarian mulai
-        // persis di tepi kanan sidebar
+        // Kolom kiri header: spacer selebar sidebar agar bar pencarian mulai
+        // persis di tepi kanan sidebar (lebarnya menyempit saat sidebar disembunyikan;
+        // tombol toggle-nya sendiri mengambang di bilah judul — lihat initUI bawah)
         brandBox = new JPanel(new BorderLayout());
         brandBox.setOpaque(false);
-        sidebarToggleBtn = new JButton(createSidebarToggleIcon());
-        flatIconButton(sidebarToggleBtn, "Tampilkan / sembunyikan sidebar");
-        sidebarToggleBtn.addActionListener(e -> toggleSidebar());
-        brandBox.add(sidebarToggleBtn, BorderLayout.WEST);
         brandBox.setPreferredSize(new Dimension(SIDEBAR_WIDTH + 5 - 14, brandBox.getPreferredSize().height));
 
         headerToolbar.add(brandBox, BorderLayout.WEST);
@@ -277,6 +273,14 @@ public class GoCrawlGui extends JFrame {
         });
         add(contentLayer, BorderLayout.CENTER);
         SwingUtilities.invokeLater(this::layoutContentLayer);
+
+        // Tombol toggle sidebar mengambang di bilah judul abu-abu, tepat di sebelah
+        // kiri tombol jendela (— □ ✕). Posisinya dihitung di layoutContentLayer()
+        sidebarToggleBtn = new JButton(createSidebarToggleIcon());
+        flatIconButton(sidebarToggleBtn, "Tampilkan / sembunyikan sidebar");
+        sidebarToggleBtn.setForeground(Color.WHITE);
+        sidebarToggleBtn.addActionListener(e -> toggleSidebar());
+        getLayeredPane().add(sidebarToggleBtn, JLayeredPane.POPUP_LAYER);
 
         // Pesan Awal
         tablePanel.setProgress(false, "Ketikkan kata kunci pencarian lalu tekan Enter atau klik 'Mulai Crawl'.");
@@ -641,6 +645,13 @@ public class GoCrawlGui extends JFrame {
         int contentLeft = sidebar.isVisible() ? SIDEBAR_WIDTH + 5 : 14 + sidebarToggleBtn.getPreferredSize().width + 4;
 
         headerToolbar.setBounds(0, 0, contentLayer.getWidth(), headerHeight);
+
+        // Tombol toggle mengambang di bilah judul: kiri tiga tombol jendela (±132px)
+        if (sidebarToggleBtn != null) {
+            int toggleX = Math.max(0, getRootPane().getWidth() - 3 * 44 - 8
+                    - sidebarToggleBtn.getPreferredSize().width);
+            sidebarToggleBtn.setBounds(toggleX, 1, sidebarToggleBtn.getPreferredSize().width, 30);
+        }
 
         if (sidebar.isVisible()) {
             // Sidebar tidak ikut turun: tetap menempel di bawah bar pencarian
