@@ -996,7 +996,7 @@ public class GoCrawlGui extends JFrame {
 
             @Override
             protected void done() {
-                finishPageLoad(page, this);
+                finishPageLoad(page, this, source);
             }
         };
 
@@ -1004,7 +1004,7 @@ public class GoCrawlGui extends JFrame {
     }
 
     /** Penyelesaian bersama kedua engine setelah satu halaman selesai dimuat. */
-    private void finishPageLoad(int page, SwingWorker<List<Article>, String> worker) {
+    private void finishPageLoad(int page, SwingWorker<List<Article>, String> worker, CrawlSource source) {
         crawlBtn.setText("🔍 Cari");
         crawlBtn.setBackground(SEARCH_BTN_BLUE);
         crawlBtn.setForeground(Color.WHITE);
@@ -1035,8 +1035,31 @@ public class GoCrawlGui extends JFrame {
 
             saveSearchOutput();
         } catch (Exception e) {
-            tablePanel.setProgress(false, "Gagal memuat Halaman " + page + ": " + e.getMessage());
+            String message = String.valueOf(e.getMessage());
+            // Portal kustom yang ternyata bukan Garuda (path /documents tidak ada):
+            // alihkan otomatis ke crawler OJS dan simpan tipe yang benar
+            if (source != null && message.contains("404")
+                    && CrawlSource.TYPE_GARUDA.equalsIgnoreCase(source.type())
+                    && !GarudaSearchEngine.DEFAULT_BASE_URL.equalsIgnoreCase(source.baseUrl())) {
+                switchSourceToOjs(source);
+                tablePanel.setProgress(false, "Portal bukan Garuda — dialihkan otomatis ke mode OJS ...");
+                SwingUtilities.invokeLater(() -> runOjsLoad(page, source));
+                return;
+            }
+            tablePanel.setProgress(false, "Gagal memuat Halaman " + page + ": " + message);
         }
+    }
+
+    /** Mengubah tipe sumber kustom menjadi OJS (dipicu crawl Garuda yang 404). */
+    private void switchSourceToOjs(CrawlSource source) {
+        int idx = crawlSources.indexOf(source);
+        if (idx >= 0) {
+            crawlSources.set(idx, new CrawlSource(source.name(), source.baseUrl(),
+                    CrawlSource.TYPE_OJS, source.enabled(), source.builtin()));
+        }
+        try {
+            CrawlSourceStore.save(Path.of("data", "crawl_sources.txt"), new ArrayList<>(crawlSources));
+        } catch (Exception ignored) {}
     }
 
     /** Pipeline crawl untuk sumber bertipe OJS: jelajah arsip → edisi → artikel. */
@@ -1070,8 +1093,9 @@ public class GoCrawlGui extends JFrame {
 
                     for (Article raw : ojsCrawler.parseIssue(issueUrl)) {
                         if (isCancelled()) break;
-                        if (!keywordMatches(activeKeyword, raw)) continue;
+                        // Perkaya dulu (abstrak/DOI/tahun) agar semua filter bekerja utuh
                         Article enriched = ojsCrawler.enrich(raw);
+                        if (!keywordMatches(activeKeyword, enriched)) continue;
                         if (!yearPasses(enriched.year())) continue;
                         if (catalog != null && !"ALL".equalsIgnoreCase(activeSintaRank)) {
                             String sRank = catalog.resolveSintaRank(enriched.url(), enriched.journal());
@@ -1103,7 +1127,7 @@ public class GoCrawlGui extends JFrame {
 
             @Override
             protected void done() {
-                finishPageLoad(page, this);
+                finishPageLoad(page, this, source);
             }
         };
 
@@ -1114,7 +1138,8 @@ public class GoCrawlGui extends JFrame {
         String kw = keyword.toLowerCase().strip();
         if (kw.isEmpty()) return true;
         return (a.title() != null && a.title().toLowerCase().contains(kw))
-                || (a.authors() != null && a.authors().toLowerCase().contains(kw));
+                || (a.authors() != null && a.authors().toLowerCase().contains(kw))
+                || (a.abstractText() != null && a.abstractText().toLowerCase().contains(kw));
     }
 
     private boolean yearPasses(String year) {
