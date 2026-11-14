@@ -18,14 +18,17 @@ import java.util.List;
 
 /**
  * Dialog "Kelola Sumber Crawl": satu jendela untuk semuanya — baris tambah cepat
- * (URL + Nama opsional) di atas, daftar sumber dengan checkbox aktif di bawah,
- * tombol hapus hanya untuk sumber kustom. Nama sumber yang dikosongkan otomatis
- * terdeteksi dari judul portal. Setiap perubahan langsung disimpan.
+ * (URL + Nama opsional + Uji Koneksi) di atas, daftar sumber dengan checkbox aktif
+ * di bawah, tombol hapus hanya untuk sumber kustom. Nama sumber yang dikosongkan
+ * otomatis terdeteksi dari judul portal. Setiap perubahan langsung disimpan.
  */
 public class CrawlSourcesDialog extends JDialog {
 
     private static final Color ACCENT_BLUE = new Color(0, 114, 188);
     private static final Color ROW_SEPARATOR = new Color(236, 238, 242);
+    private static final Color STATUS_INFO = new Color(110, 110, 110);
+    private static final Color STATUS_OK = new Color(34, 139, 34);
+    private static final Color STATUS_ERROR = new Color(198, 40, 40);
     private static final int MAX_LIST_HEIGHT = 220;
 
     private final List<CrawlSource> sources;
@@ -35,6 +38,8 @@ public class CrawlSourcesDialog extends JDialog {
     private JScrollPane listScroll;
     private JTextField urlField;
     private JTextField nameField;
+    private JButton testBtn;
+    private JLabel addStatusLabel;
 
     public CrawlSourcesDialog(Frame owner, List<CrawlSource> sources, Path storeFile, Runnable onSourcesChanged) {
         super(owner, "Kelola Sumber Crawl", true);
@@ -53,11 +58,16 @@ public class CrawlSourcesDialog extends JDialog {
         hint.setFont(hint.getFont().deriveFont(Font.ITALIC, 11f));
         hint.setForeground(new Color(120, 120, 120));
 
-        // 2. Baris tambah cepat: URL + Nama (opsional) + tombol — tanpa jendela kedua
-        urlField = new JTextField("https://");
+        // 2. Baris tambah cepat: URL + Uji Koneksi (validasi), lalu Nama + Tambah
+        urlField = new JTextField();
         urlField.putClientProperty("JTextField.placeholderText", "https://portal.ac.id");
         nameField = new JTextField();
-        nameField.putClientProperty("JTextField.placeholderText", "Nama (kosongkan = otomatis)");
+        nameField.putClientProperty("JTextField.placeholderText", "Nama sumber (kosongkan = otomatis)");
+
+        testBtn = new JButton("Uji Koneksi");
+        testBtn.setFont(testBtn.getFont().deriveFont(11f));
+        testBtn.setMargin(new Insets(2, 10, 2, 10));
+        testBtn.addActionListener(e -> testConnection());
 
         JButton addBtn = new JButton("＋ Tambah");
         addBtn.setBackground(ACCENT_BLUE);
@@ -65,24 +75,28 @@ public class CrawlSourcesDialog extends JDialog {
         addBtn.setFocusable(false);
         addBtn.addActionListener(e -> addSourceFromFields());
 
-        JPanel fields = new JPanel(new GridBagLayout());
-        fields.setOpaque(false);
-        GridBagConstraints gc = new GridBagConstraints();
-        gc.gridy = 0;
-        gc.fill = GridBagConstraints.HORIZONTAL;
-        gc.insets = new Insets(0, 0, 0, 6);
-        gc.weightx = 2;
-        gc.gridx = 0;
-        fields.add(urlField, gc);
-        gc.weightx = 1;
-        gc.gridx = 1;
-        gc.insets = new Insets(0, 0, 0, 0);
-        fields.add(nameField, gc);
+        JPanel addRows = new JPanel(new GridLayout(2, 1, 0, 6));
+        addRows.setOpaque(false);
 
-        JPanel addRow = new JPanel(new BorderLayout(8, 0));
-        addRow.setOpaque(false);
-        addRow.add(fields, BorderLayout.CENTER);
-        addRow.add(addBtn, BorderLayout.EAST);
+        JPanel urlRow = new JPanel(new BorderLayout(6, 0));
+        urlRow.setOpaque(false);
+        urlRow.add(urlField, BorderLayout.CENTER);
+        urlRow.add(testBtn, BorderLayout.EAST);
+        addRows.add(urlRow);
+
+        JPanel nameRow = new JPanel(new BorderLayout(6, 0));
+        nameRow.setOpaque(false);
+        nameRow.add(nameField, BorderLayout.CENTER);
+        nameRow.add(addBtn, BorderLayout.EAST);
+        addRows.add(nameRow);
+
+        addStatusLabel = new JLabel(" ");
+        addStatusLabel.setFont(addStatusLabel.getFont().deriveFont(Font.PLAIN, 11f));
+
+        JPanel addSection = new JPanel(new BorderLayout(0, 4));
+        addSection.setOpaque(false);
+        addSection.add(addRows, BorderLayout.CENTER);
+        addSection.add(addStatusLabel, BorderLayout.SOUTH);
 
         // 3. Daftar sumber (checkbox aktif + hapus untuk kustom)
         rowsPanel = new JPanel();
@@ -98,7 +112,7 @@ public class CrawlSourcesDialog extends JDialog {
         JPanel top = new JPanel(new BorderLayout(0, 10));
         top.setOpaque(false);
         top.add(hint, BorderLayout.NORTH);
-        top.add(addRow, BorderLayout.SOUTH);
+        top.add(addSection, BorderLayout.SOUTH);
         add(top, BorderLayout.NORTH);
         add(listScroll, BorderLayout.CENTER);
 
@@ -173,8 +187,7 @@ public class CrawlSourcesDialog extends JDialog {
     private void addSourceFromFields() {
         String baseUrl = urlField.getText().strip();
         if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-            JOptionPane.showMessageDialog(this, "URL harus dimulai dengan http:// atau https://",
-                    "Tambah Sumber", JOptionPane.WARNING_MESSAGE);
+            setStatus("URL harus dimulai dengan http:// atau https://", STATUS_ERROR);
             return;
         }
         if (baseUrl.endsWith("/")) baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
@@ -187,12 +200,85 @@ public class CrawlSourcesDialog extends JDialog {
         sources.add(added);
         persist();
         renderRows();
-        urlField.setText("https://");
+        urlField.setText("");
         nameField.setText("");
 
         if (nameBlank) {
-            detectNameAsync(added); // perkaya nama dari judul portal di latar belakang
+            setStatus("Mengambil nama portal ...", STATUS_INFO);
+            detectNameAsync(added);
+        } else {
+            setStatus("Sumber \"" + name + "\" ditambahkan.", STATUS_OK);
         }
+    }
+
+    /** Uji koneksi ke URL pada kolom sumber: validasi + deteksi judul portal. */
+    private void testConnection() {
+        String baseUrl = urlField.getText().strip();
+        if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+            setStatus("URL harus dimulai dengan http:// atau https://", STATUS_ERROR);
+            return;
+        }
+        final String cleanUrl = baseUrl.endsWith("/")
+                ? baseUrl.substring(0, baseUrl.length() - 1)
+                : baseUrl;
+
+        testBtn.setEnabled(false);
+        setStatus("Menguji koneksi ke " + cleanUrl + " ...", STATUS_INFO);
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() {
+                return fetchPortalTitle(cleanUrl);
+            }
+
+            @Override
+            protected void done() {
+                testBtn.setEnabled(true);
+                try {
+                    String detected = get();
+                    if (detected != null) {
+                        setStatus("Terhubung — portal: " + detected, STATUS_OK);
+                        nameField.setText(detected.length() > 40 ? detected.substring(0, 40).strip() : detected);
+                    } else {
+                        setStatus("Gagal terhubung (portal offline / menolak akses).", STATUS_ERROR);
+                    }
+                } catch (Exception ex) {
+                    setStatus("Gagal terhubung: " + ex.getMessage(), STATUS_ERROR);
+                }
+            }
+        }.execute();
+    }
+
+    /**
+     * Mengambil judul portal dari halaman pencariannya. Satu kali percobaan ulang
+     * setelah jeda 3 detik — Portal Garuda kerap menolak akses (403) bila terlalu
+     * cepat. Null berarti gagal.
+     */
+    private String fetchPortalTitle(String baseUrl) {
+        for (int attempt = 1; attempt <= 2; attempt++) {
+            try {
+                org.jsoup.Connection.Response response = Jsoup.connect(baseUrl + "/documents?q=test")
+                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) GoCrawl Source Tester")
+                        .header("Accept-Language", "id,en-US;q=0.9,en;q=0.8")
+                        .timeout(15000)
+                        .ignoreHttpErrors(true)
+                        .execute();
+                if (response.statusCode() == 200) {
+                    Document doc = response.parse();
+                    String title = doc.title();
+                    return title == null || title.isBlank() ? null : title.strip();
+                }
+            } catch (Exception ignored) {
+                // coba lagi pada percobaan berikutnya
+            }
+            if (attempt == 1) {
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException ie) {
+                    return null;
+                }
+            }
+        }
+        return null;
     }
 
     /** Melengkapi nama sumber dari judul portal secara otomatis (latar belakang). */
@@ -200,30 +286,24 @@ public class CrawlSourcesDialog extends JDialog {
         new SwingWorker<String, Void>() {
             @Override
             protected String doInBackground() {
-                try {
-                    Document doc = Jsoup.connect(source.baseUrl() + "/documents?q=test")
-                            .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) GoCrawl Source Tester")
-                            .header("Accept-Language", "id,en-US;q=0.9,en;q=0.8")
-                            .timeout(15000)
-                            .get();
-                    String detected = doc.title();
-                    return detected == null || detected.isBlank() ? null : detected.strip();
-                } catch (Exception ex) {
-                    return null;
-                }
+                return fetchPortalTitle(source.baseUrl());
             }
 
             @Override
             protected void done() {
                 try {
                     String detected = get();
-                    if (detected == null) return;
                     int idx = sources.indexOf(source);
                     if (idx < 0) return;
-                    String name = detected.length() > 40 ? detected.substring(0, 40).strip() : detected;
-                    sources.set(idx, new CrawlSource(name, source.baseUrl(), source.enabled(), source.builtin()));
-                    persist();
-                    renderRows();
+                    if (detected != null) {
+                        String name = detected.length() > 40 ? detected.substring(0, 40).strip() : detected;
+                        sources.set(idx, new CrawlSource(name, source.baseUrl(), source.enabled(), source.builtin()));
+                        persist();
+                        renderRows();
+                        setStatus("Nama portal terdeteksi: " + name, STATUS_OK);
+                    } else {
+                        setStatus("Nama portal gagal diambil — host URL dipakai.", STATUS_ERROR);
+                    }
                 } catch (Exception ignored) {}
             }
         }.execute();
@@ -245,6 +325,11 @@ public class CrawlSourcesDialog extends JDialog {
         } catch (Exception ex) {
             return baseUrl;
         }
+    }
+
+    private void setStatus(String text, Color color) {
+        addStatusLabel.setForeground(color);
+        addStatusLabel.setText(text);
     }
 
     /** Simpan daftar terkini + beri tahu pemilik dialog bahwa sumber berubah. */
