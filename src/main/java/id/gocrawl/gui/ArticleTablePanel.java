@@ -61,6 +61,8 @@ public class ArticleTablePanel extends JPanel {
     private Consumer<Integer> onPageSizeChange;
     private Consumer<Article> onAddToFavorites;
     private Consumer<Article> onRequestAddToCollection;
+    private Consumer<Article> onRemoveFromCollection;
+    private boolean browseMode = false;
 
     private int currentPage = 1;
     private int totalPages = 1;
@@ -222,6 +224,7 @@ public class ArticleTablePanel extends JPanel {
         JMenuItem copyBibItem = new JMenuItem("Salin Sitasi (BibTeX)");
         JMenuItem addToFavoritesItem = new JMenuItem("★ Tambahkan ke Favorit");
         JMenuItem addToCollectionItem = new JMenuItem("Tambahkan ke Koleksi...");
+        JMenuItem removeFromCollectionItem = new JMenuItem("Buang dari Koleksi");
         JMenuItem openBrowserItem = new JMenuItem("Buka Laman Artikel di Browser");
 
         contextMenu.add(copyTitleItem);
@@ -230,6 +233,7 @@ public class ArticleTablePanel extends JPanel {
         contextMenu.addSeparator();
         contextMenu.add(addToFavoritesItem);
         contextMenu.add(addToCollectionItem);
+        contextMenu.add(removeFromCollectionItem);
         contextMenu.addSeparator();
         contextMenu.add(openBrowserItem);
 
@@ -246,6 +250,8 @@ public class ArticleTablePanel extends JPanel {
                 int r = table.rowAtPoint(e.getPoint());
                 if (r >= 0 && r < table.getRowCount()) {
                     table.setRowSelectionInterval(r, r);
+                    // "Buang dari Koleksi" hanya relevan saat membuka sebuah koleksi
+                    removeFromCollectionItem.setVisible(browseMode);
                     contextMenu.show(e.getComponent(), e.getX(), e.getY());
                 }
             }
@@ -270,6 +276,10 @@ public class ArticleTablePanel extends JPanel {
         addToCollectionItem.addActionListener(e -> {
             Article a = getSelectedArticle();
             if (a != null && onRequestAddToCollection != null) onRequestAddToCollection.accept(a);
+        });
+        removeFromCollectionItem.addActionListener(e -> {
+            Article a = getSelectedArticle();
+            if (a != null && onRemoveFromCollection != null) onRemoveFromCollection.accept(a);
         });
         openBrowserItem.addActionListener(e -> {
             Article a = getSelectedArticle();
@@ -411,6 +421,14 @@ public class ArticleTablePanel extends JPanel {
 
     public void setOnAddToCollectionRequest(Consumer<Article> callback) {
         this.onRequestAddToCollection = callback;
+    }
+
+    public void setOnRemoveFromCollection(Consumer<Article> callback) {
+        this.onRemoveFromCollection = callback;
+    }
+
+    public void setBrowseMode(boolean browseMode) {
+        this.browseMode = browseMode;
     }
 
     public int getPageSize() {

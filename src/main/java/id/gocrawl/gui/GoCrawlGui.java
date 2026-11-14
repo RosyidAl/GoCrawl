@@ -239,6 +239,7 @@ public class GoCrawlGui extends JFrame {
         tablePanel = new ArticleTablePanel(catalog, this::showArticleInInspector);
         tablePanel.setOnAddToFavorites(this::addArticleToFavorites);
         tablePanel.setOnAddToCollectionRequest(this::showAddToCollectionDialog);
+        tablePanel.setOnRemoveFromCollection(this::removeFromActiveCollection);
         tablePanel.setOnPageChange(this::loadPage);
         tablePanel.setOnPageSizeChange(newSize -> {
             if (newSize == activePageSize) return;
@@ -467,7 +468,7 @@ public class GoCrawlGui extends JFrame {
     private JLabel createKoleksiRow(Path path, boolean active) {
         Integer count = koleksiCountCache.computeIfAbsent(path, p -> {
             try {
-                return ArticleStorage.scanWorkspace(p).size();
+                return ArticleStorage.scanWorkspace(collectionStore(p)).size();
             } catch (Exception ex) {
                 return 0; // koleksi rusak/tak terbaca tidak boleh menggagalkan startup
             }
@@ -547,6 +548,12 @@ public class GoCrawlGui extends JFrame {
         } else {
             refreshKoleksiList();
         }
+    }
+
+    /** Folder penyimpanan aktual untuk sebuah koleksi (Default workspace = folder output lama). */
+    private Path collectionStore(Path path) {
+        Path defaultWorkspace = Path.of(".").toAbsolutePath().normalize();
+        return path.equals(defaultWorkspace) ? Path.of("output", "garuda_search") : path;
     }
 
     /** Menetapkan koleksi/folder proyek aktif lalu menyorotnya di daftar. */
@@ -804,6 +811,7 @@ public class GoCrawlGui extends JFrame {
         headerToolbar.revalidate();
         refreshNavHighlight();
         refreshKoleksiList();
+        tablePanel.setBrowseMode(false);
 
         loadPage(1);
     }
@@ -1093,6 +1101,7 @@ public class GoCrawlGui extends JFrame {
         headerToolbar.setVisible(true);
         headerToolbar.revalidate();
         layoutContentLayer();
+        tablePanel.setBrowseMode(false);
         if (pageCache.containsKey(currentSearchPage)) {
             List<Article> cached = pageCache.get(currentSearchPage);
             tablePanel.setArticles(cached);
@@ -1212,21 +1221,53 @@ public class GoCrawlGui extends JFrame {
         if (advancedSearchPanel.isVisible()) {
             toggleAdvancedSearch(advancedSearchButton);
         }
-        List<Article> saved = ArticleStorage.scanWorkspace(path);
+        List<Article> saved = ArticleStorage.scanWorkspace(collectionStore(path));
         tablePanel.setArticles(saved);
         tablePanel.updatePagination(1, 1, saved.size(), saved.size());
         tablePanel.setProgress(false, saved.isEmpty()
                 ? "Koleksi \"" + collectionDisplayName(path) + "\" masih kosong."
                 : "");
+        tablePanel.setBrowseMode(true);
         layoutContentLayer();
+    }
+
+    /** Membuang satu artikel dari koleksi yang sedang dibuka. */
+    private void removeFromActiveCollection(Article article) {
+        if (activeView != SidebarView.COLLECTION) return;
+        Path collection = activeProject;
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Buang artikel ini dari koleksi \"" + collectionDisplayName(collection) + "\"?",
+                "Buang dari Koleksi", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+        try {
+            Path json = collectionStore(collection).resolve("articles.json");
+            List<Article> existing = new ArrayList<>();
+            if (Files.exists(json)) {
+                existing.addAll(ArticleStorage.parseJson(Files.readString(json, StandardCharsets.UTF_8)));
+            }
+            existing.removeIf(m -> isSameArticle(m, article));
+            ArticleStorage.saveJson(json, existing);
+            koleksiCountCache.remove(collection);
+            tablePanel.setArticles(existing);
+            tablePanel.updatePagination(1, 1, existing.size(), existing.size());
+            refreshKoleksiList();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Gagal membuang artikel: " + ex.getMessage(),
+                    "Buang dari Koleksi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** Deteksi artikel yang sama berdasarkan URL, DOI, atau judul. */
+    private static boolean isSameArticle(Article m, Article article) {
+        return (!m.url().isBlank() && m.url().equalsIgnoreCase(article.url()))
+                || (!m.doi().isBlank() && m.doi().equalsIgnoreCase(article.doi()))
+                || m.title().equalsIgnoreCase(article.title());
     }
 
     /** Deteksi duplikat artikel berdasarkan URL, DOI, atau judul. */
     private static boolean articleExists(List<Article> articles, Article article) {
-        return articles.stream().anyMatch(m ->
-                (!m.url().isBlank() && m.url().equalsIgnoreCase(article.url())) ||
-                (!m.doi().isBlank() && m.doi().equalsIgnoreCase(article.doi())) ||
-                m.title().equalsIgnoreCase(article.title()));
+        return articles.stream().anyMatch(m -> isSameArticle(m, article));
     }
 
     /** Bilah judul abu-abu senada, lewat window decorations FlatLaf. */
