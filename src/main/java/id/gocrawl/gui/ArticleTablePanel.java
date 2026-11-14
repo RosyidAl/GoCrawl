@@ -60,6 +60,8 @@ public class ArticleTablePanel extends JPanel {
     private final Consumer<Article> onArticleSelected;
     private Consumer<Integer> onPageChange;
     private Consumer<Integer> onPageSizeChange;
+    private Consumer<Article> onAddToFavorites;
+    private Consumer<Article> onRequestAddToCollection;
 
     private int currentPage = 1;
     private int totalPages = 1;
@@ -118,10 +120,10 @@ public class ArticleTablePanel extends JPanel {
 
         // 3. Bilah Status Bawah
         JPanel bottomPanel = new JPanel(new BorderLayout(8, 0));
-        bottomPanel.setBorder(new EmptyBorder(4, 4, 4, 4));
+        bottomPanel.setBorder(new EmptyBorder(2, 6, 8, 6));
         bottomPanel.add(countLabel, BorderLayout.WEST);
 
-        JPanel centerBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
+        JPanel centerBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
 
         firstPageBtn.setFont(firstPageBtn.getFont().deriveFont(Font.BOLD, 14f));
         firstPageBtn.setToolTipText("Halaman Pertama");
@@ -172,11 +174,11 @@ public class ArticleTablePanel extends JPanel {
         centerBox.add(pageInfoLabel);
         centerBox.add(nextPageBtn);
         centerBox.add(lastPageBtn);
-        centerBox.add(Box.createHorizontalStrut(6));
+        centerBox.add(paginationSeparator());
         centerBox.add(new JLabel("Ke:"));
         centerBox.add(jumpPageField);
         centerBox.add(jumpBtn);
-        centerBox.add(Box.createHorizontalStrut(8));
+        centerBox.add(paginationSeparator());
         centerBox.add(new JLabel("Tampilkan:"));
         centerBox.add(pageSizeComboBox);
         centerBox.add(new JLabel("/ hal"));
@@ -224,11 +226,16 @@ public class ArticleTablePanel extends JPanel {
         JMenuItem copyTitleItem = new JMenuItem("Salin Judul");
         JMenuItem copyDoiItem = new JMenuItem("Salin DOI");
         JMenuItem copyBibItem = new JMenuItem("Salin Sitasi (BibTeX)");
+        JMenuItem addToFavoritesItem = new JMenuItem("★ Tambahkan ke Favorit");
+        JMenuItem addToCollectionItem = new JMenuItem("Tambahkan ke Koleksi...");
         JMenuItem openBrowserItem = new JMenuItem("Buka Laman Artikel di Browser");
 
         contextMenu.add(copyTitleItem);
         contextMenu.add(copyDoiItem);
         contextMenu.add(copyBibItem);
+        contextMenu.addSeparator();
+        contextMenu.add(addToFavoritesItem);
+        contextMenu.add(addToCollectionItem);
         contextMenu.addSeparator();
         contextMenu.add(openBrowserItem);
 
@@ -262,6 +269,14 @@ public class ArticleTablePanel extends JPanel {
             Article a = getSelectedArticle();
             if (a != null) copyToClipboard(CitationExporter.toBibTeX(List.of(a)));
         });
+        addToFavoritesItem.addActionListener(e -> {
+            Article a = getSelectedArticle();
+            if (a != null && onAddToFavorites != null) onAddToFavorites.accept(a);
+        });
+        addToCollectionItem.addActionListener(e -> {
+            Article a = getSelectedArticle();
+            if (a != null && onRequestAddToCollection != null) onRequestAddToCollection.accept(a);
+        });
         openBrowserItem.addActionListener(e -> {
             Article a = getSelectedArticle();
             if (a != null && a.url() != null && !a.url().isBlank()) {
@@ -286,6 +301,13 @@ public class ArticleTablePanel extends JPanel {
             sorter.setRowFilter(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(text)));
         }
         updateCountLabel();
+    }
+
+    /** Pemisah tipis vertikal antar kelompok kontrol di bilah paginasi. */
+    private JComponent paginationSeparator() {
+        JSeparator separator = new JSeparator(SwingConstants.VERTICAL);
+        separator.setPreferredSize(new Dimension(1, 20));
+        return separator;
     }
 
     public synchronized void addArticle(Article article) {
@@ -395,6 +417,14 @@ public class ArticleTablePanel extends JPanel {
 
     public void setOnPageSizeChange(Consumer<Integer> callback) {
         this.onPageSizeChange = callback;
+    }
+
+    public void setOnAddToFavorites(Consumer<Article> callback) {
+        this.onAddToFavorites = callback;
+    }
+
+    public void setOnAddToCollectionRequest(Consumer<Article> callback) {
+        this.onRequestAddToCollection = callback;
     }
 
     public int getPageSize() {

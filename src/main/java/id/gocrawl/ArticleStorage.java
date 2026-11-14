@@ -6,8 +6,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Penyimpanan dan pembacaan berkas data artikel lokal (articles.json & articles.csv)
@@ -82,14 +80,84 @@ public final class ArticleStorage {
         return list;
     }
 
+    /**
+     * Pembaca pasangan "kunci": "nilai" dengan scanner karakter biasa — TANPA regex.
+     * Regex dengan grup bersarang merekrusi per karakter dan meledak StackOverflowError
+     * pada nilai panjang (mis. abstrak artikel).
+     */
     private static Map<String, String> extractFields(String body) {
         Map<String, String> fields = new HashMap<>();
-        Pattern p = Pattern.compile("\"([^\"]+)\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"");
-        Matcher m = p.matcher(body);
-        while (m.find()) {
-            String key = m.group(1);
-            String val = m.group(2);
-            fields.put(key, unescapeJson(val));
+        int len = body.length();
+        int i = 0;
+        while (i < len) {
+            char c = body.charAt(i);
+            if (c != '"') {
+                i++;
+                continue;
+            }
+            // Baca nama kunci (tangani escape)
+            StringBuilder key = new StringBuilder();
+            i++;
+            boolean keyClosed = false;
+            while (i < len) {
+                char kc = body.charAt(i);
+                if (kc == '\\' && i + 1 < len) {
+                    key.append(body.charAt(i + 1));
+                    i += 2;
+                    continue;
+                }
+                if (kc == '"') {
+                    i++;
+                    keyClosed = true;
+                    break;
+                }
+                key.append(kc);
+                i++;
+            }
+            if (!keyClosed) break;
+            // Lewati hingga ':' lalu pembuka nilai
+            while (i < len && body.charAt(i) != ':') i++;
+            if (i >= len) break;
+            i++;
+            while (i < len && Character.isWhitespace(body.charAt(i))) i++;
+            if (i >= len || body.charAt(i) != '"') continue;
+            // Baca nilai string (tangani escape \n \r \t \" \\ dan unicode escape)
+            StringBuilder value = new StringBuilder();
+            i++;
+            boolean valueClosed = false;
+            while (i < len) {
+                char vc = body.charAt(i);
+                if (vc == '\\' && i + 1 < len) {
+                    char next = body.charAt(i + 1);
+                    if (next == 'u' && i + 5 < len) {
+                        try {
+                            value.append((char) Integer.parseInt(body.substring(i + 2, i + 6), 16));
+                            i += 6;
+                            continue;
+                        } catch (NumberFormatException ignored) {
+                            // bukan escape unicode valid — jatuh ke penanganan biasa
+                        }
+                    }
+                    value.append(switch (next) {
+                        case 'n' -> '\n';
+                        case 'r' -> '\r';
+                        case 't' -> '\t';
+                        default -> next;
+                    });
+                    i += 2;
+                    continue;
+                }
+                if (vc == '"') {
+                    i++;
+                    valueClosed = true;
+                    break;
+                }
+                value.append(vc);
+                i++;
+            }
+            if (valueClosed) {
+                fields.put(key.toString(), value.toString());
+            }
         }
         return fields;
     }
@@ -136,12 +204,4 @@ public final class ArticleStorage {
         return sb.toString();
     }
 
-    private static String unescapeJson(String s) {
-        if (s == null) return "";
-        return s.replace("\\\"", "\"")
-                .replace("\\\\", "\\")
-                .replace("\\n", "\n")
-                .replace("\\r", "\r")
-                .replace("\\t", "\t");
-    }
 }

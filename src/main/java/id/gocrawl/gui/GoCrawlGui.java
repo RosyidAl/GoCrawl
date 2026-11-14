@@ -1,6 +1,5 @@
 package id.gocrawl.gui;
 
-import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import id.gocrawl.*;
 
@@ -14,11 +13,15 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Jendela Utama GoCrawl Desktop GUI:
  * Mengusung tata letak 2-panel bersih (Tabel Hasil Penelusuran & Detail Inspector Metadata),
  * terintegrasi langsung dengan mesin pencarian Portal Garuda, kontrol paginasi per-halaman,
- * dialog direktori jurnal terindeks, dan penyaring akreditasi SINTA.
+ * dialog direktori jurnal terindeks, penyaring akreditasi SINTA, dan navigator koleksi artikel.
  */
 public class GoCrawlGui extends JFrame {
 
@@ -41,6 +44,10 @@ public class GoCrawlGui extends JFrame {
     /** Warna tombol Cari (biru) dan tombol Stop (merah) pada baris pencarian. */
     private static final Color SEARCH_BTN_BLUE = new Color(0, 114, 188);
     private static final Color SEARCH_BTN_RED = new Color(198, 40, 40);
+
+    /** Warna bilah judul abu-abu dan hover menu-nya. */
+    private static final Color TITLE_BAR_BACKGROUND = new Color(80, 86, 94);
+    private static final Color TITLE_BAR_HOVER = new Color(97, 103, 112);
 
     /** Lebar kolom sidebar; sekaligus garis potong kiri bar pencarian (tepi kanan sidebar). */
     private static final int SIDEBAR_WIDTH = 220;
@@ -59,8 +66,18 @@ public class GoCrawlGui extends JFrame {
     private JPanel headerToolbar;
     private JSplitPane mainSplit;
     private JPanel sidebar;
-    private final JLabel projectPathLabel = new JLabel("Default workspace");
+    private JPanel brandBox;
+    private JButton sidebarToggleBtn;
+    private JPanel koleksiListPanel;
+    private boolean koleksiListExpanded = true;
     private Path activeProject = Path.of(".").toAbsolutePath().normalize();
+    private final Map<Path, Integer> koleksiCountCache = new ConcurrentHashMap<>();
+
+    /** View yang sedang ditampilkan di tabel: hasil crawl atau satu koleksi. */
+    private enum SidebarView { SEARCH_RESULTS, COLLECTION }
+    private SidebarView activeView = SidebarView.SEARCH_RESULTS;
+    private JLabel navSearchRow;
+    private JLabel navFavoritesRow;
 
     private JournalCatalog catalog;
     private ArticleTablePanel tablePanel;
@@ -125,12 +142,16 @@ public class GoCrawlGui extends JFrame {
         saveResultsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK));
         saveResultsItem.addActionListener(e -> saveResultsManually());
 
+        JMenuItem openProjectFolderItem = new JMenuItem("Buka Folder Koleksi...");
+        openProjectFolderItem.addActionListener(e -> chooseProjectFolder());
+
         JMenuItem exitItem = new JMenuItem("Keluar");
         exitItem.addActionListener(e -> System.exit(0));
 
         fileMenu.add(viewJournalsFileItem);
         fileMenu.add(addJournalItem);
         fileMenu.add(saveResultsItem);
+        fileMenu.add(openProjectFolderItem);
         fileMenu.addSeparator();
         fileMenu.add(exitItem);
         menuBar.add(fileMenu);
@@ -142,21 +163,29 @@ public class GoCrawlGui extends JFrame {
         menuBar.add(catalogMenu);
 
         setJMenuBar(menuBar);
+        // Bilah judul abu-abu: client property ini menonaktifkan bilah "unified"
+        // FlatLaf (yang mengikuti latar window putih) dan memberi warna judul
+        getRootPane().putClientProperty("JRootPane.titleBarBackground", TITLE_BAR_BACKGROUND);
+        getRootPane().putClientProperty("JRootPane.titleBarForeground", Color.WHITE);
+        menuBar.setForeground(Color.WHITE);
+        for (MenuElement item : menuBar.getSubElements()) {
+            if (item instanceof JMenuItem) ((JMenuItem) item).setForeground(Color.WHITE);
+        }
 
         // 2. Toolbar Atas (baris pencarian saja — baris filter lanjutan diposisikan
         // terpisah di contentLayer agar sidebar tidak ikut turun)
         headerToolbar = new JPanel(new BorderLayout(10, 0));
         headerToolbar.setBorder(new EmptyBorder(10, 14, 10, 14));
 
-        // Judul Aplikasi — kolomnya dibuat selebar sidebar, sehingga bar pencarian
-        // di potong (mulai) tepat di tepi kanan sidebar
-        JPanel brandBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        JLabel titleLabel = new JLabel("GoCrawl");
-        titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 17f));
-        brandBox.add(titleLabel);
-        // 14px = margin kiri headerToolbar, dikoreksi agar tepi kanan kolom brand
-        // = tepi kanan sidebar (220 + 5 divider), sehingga bar pencarian mulai
-        // persis di garis potong sidebar
+        // Kolom kiri header: tombol toggle sidebar di pojok kiri atas. Kolomnya tetap
+        // selebar sidebar (dikoreksi margin kiri 14px) agar bar pencarian mulai
+        // persis di tepi kanan sidebar
+        brandBox = new JPanel(new BorderLayout());
+        brandBox.setOpaque(false);
+        sidebarToggleBtn = new JButton(createSidebarToggleIcon());
+        flatIconButton(sidebarToggleBtn, "Tampilkan / sembunyikan sidebar");
+        sidebarToggleBtn.addActionListener(e -> toggleSidebar());
+        brandBox.add(sidebarToggleBtn, BorderLayout.WEST);
         brandBox.setPreferredSize(new Dimension(SIDEBAR_WIDTH + 5 - 14, brandBox.getPreferredSize().height));
 
         headerToolbar.add(brandBox, BorderLayout.WEST);
@@ -204,13 +233,15 @@ public class GoCrawlGui extends JFrame {
         searchArea.setOpaque(false);
         searchArea.add(searchControls);
         headerToolbar.add(searchArea, BorderLayout.CENTER);
-        
+
 
         // 3. Tata Letak Bersih 2-Panel (Tabel Artikel di Kiri/Tengah & Detail Inspector di Kanan)
         inspectorPanel = new DetailInspectorPanel(catalog);
         // Inspector disembunyikan di awal; muncul hanya saat artikel dipilih di tabel
         inspectorPanel.setVisible(false);
         tablePanel = new ArticleTablePanel(catalog, this::showArticleInInspector);
+        tablePanel.setOnAddToFavorites(this::addArticleToFavorites);
+        tablePanel.setOnAddToCollectionRequest(this::showAddToCollectionDialog);
         tablePanel.setOnPageChange(this::loadPage);
         tablePanel.setOnPageSizeChange(newSize -> {
             if (newSize == activePageSize) return;
@@ -256,79 +287,278 @@ public class GoCrawlGui extends JFrame {
     }
 
     private JPanel createSidebar() {
-        JPanel sidebar = new JPanel(new BorderLayout(0, 12));
-        sidebar.setBorder(new EmptyBorder(18, 14, 14, 12));
+        JPanel sidebar = new JPanel(new BorderLayout(0, 14));
+        sidebar.setBorder(new EmptyBorder(16, 14, 14, 12));
         sidebar.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 500));
         sidebar.setBackground(new Color(248, 249, 252));
-        JPanel project = new JPanel();
-        project.setOpaque(false);
-        project.setLayout(new BoxLayout(project, BoxLayout.Y_AXIS));
-        JLabel heading = new JLabel("PROYEK SAAT INI");
-        heading.setFont(heading.getFont().deriveFont(Font.BOLD, 10f));
-        heading.setForeground(new Color(105, 112, 125));
-        project.add(heading);
-        project.add(Box.createVerticalStrut(8));
-        projectPathLabel.setFont(projectPathLabel.getFont().deriveFont(Font.BOLD, 13f));
-        projectPathLabel.setToolTipText(activeProject.toString());
-        project.add(projectPathLabel);
-        project.add(Box.createVerticalStrut(8));
-        JButton manage = new JButton("Buka Folder Proyek…");
-        manage.setAlignmentX(Component.LEFT_ALIGNMENT);
-        manage.addActionListener(e -> chooseProjectFolder());
-        project.add(manage);
-        project.add(Box.createVerticalStrut(5));
-        JButton create = new JButton("Buat Proyek Baru…");
-        create.setAlignmentX(Component.LEFT_ALIGNMENT);
-        create.addActionListener(e -> createProjectFolder());
-        project.add(create);
-        sidebar.add(project, BorderLayout.NORTH);
+
         JPanel nav = new JPanel();
         nav.setOpaque(false);
         nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
-        JLabel all = new JLabel("▤   Semua Artikel");
-        all.setOpaque(true);
-        all.setBackground(new Color(228, 235, 251));
-        all.setForeground(new Color(48, 78, 158));
-        all.setBorder(new EmptyBorder(10, 9, 10, 6));
-        all.setAlignmentX(Component.LEFT_ALIGNMENT);
-        nav.add(all);
-        sidebar.add(nav, BorderLayout.CENTER);
+        navSearchRow = createNavRow("🔍   Hasil Pencarian", () -> showSearchResults());
+        navFavoritesRow = createNavRow("★   Favorit", () -> openFavorites());
+        nav.add(navSearchRow);
+        nav.add(navFavoritesRow);
+        sidebar.add(nav, BorderLayout.NORTH);
+
+        // Seksi "Koleksi" ala panel Projects IDE: header lipat + tombol tambah,
+        // daftar koleksi bisa diklik untuk dijadikan koleksi aktif
+        JPanel koleksiSection = new JPanel(new BorderLayout(0, 2));
+        koleksiSection.setOpaque(false);
+
+        JPanel koleksiHeader = new JPanel(new BorderLayout(2, 0));
+        koleksiHeader.setOpaque(false);
+        JButton expandBtn = new JButton(koleksiListExpanded ? "▾" : "▸");
+        flatIconButton(expandBtn, "Lipat / bentangkan daftar koleksi");
+        expandBtn.addActionListener(e -> {
+            koleksiListExpanded = !koleksiListExpanded;
+            expandBtn.setText(koleksiListExpanded ? "▾" : "▸");
+            refreshKoleksiList();
+        });
+        JLabel koleksiTitle = new JLabel("Koleksi");
+        koleksiTitle.setFont(koleksiTitle.getFont().deriveFont(Font.BOLD, 13f));
+        koleksiTitle.setForeground(new Color(60, 60, 60));
+        JButton addBtn = new JButton("+");
+        flatIconButton(addBtn, "Buat koleksi baru");
+        addBtn.addActionListener(e -> createProjectFolder());
+        koleksiHeader.add(expandBtn, BorderLayout.WEST);
+        koleksiHeader.add(koleksiTitle, BorderLayout.CENTER);
+        koleksiHeader.add(addBtn, BorderLayout.EAST);
+        koleksiSection.add(koleksiHeader, BorderLayout.NORTH);
+
+        koleksiListPanel = new JPanel();
+        koleksiListPanel.setOpaque(false);
+        koleksiListPanel.setLayout(new BoxLayout(koleksiListPanel, BoxLayout.Y_AXIS));
+        JScrollPane koleksiScroll = new JScrollPane(koleksiListPanel);
+        koleksiScroll.setBorder(null);
+        koleksiScroll.setOpaque(false);
+        koleksiScroll.getViewport().setOpaque(false);
+        koleksiScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        koleksiScroll.getVerticalScrollBar().setUnitIncrement(16);
+        koleksiSection.add(koleksiScroll, BorderLayout.CENTER);
+
+        sidebar.add(koleksiSection, BorderLayout.CENTER);
+        refreshKoleksiList();
+        refreshNavHighlight();
         return sidebar;
+    }
+
+    /** Tombol ikon polos tanpa border (gaya toolBarButton). */
+    private void flatIconButton(JButton button, String tooltip) {
+        button.putClientProperty("JButton.buttonType", "toolBarButton");
+        button.setToolTipText(tooltip);
+        button.setFont(button.getFont().deriveFont(Font.BOLD, 13f));
+        button.setMargin(new Insets(2, 6, 2, 6));
+    }
+
+    /** Ikon toggle sidebar: bingkai kotak dengan panel kiri terisi. */
+    private Icon createSidebarToggleIcon() {
+        return new Icon() {
+            @Override
+            public int getIconWidth() { return 18; }
+
+            @Override
+            public int getIconHeight() { return 18; }
+
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(c.getForeground());
+                g2.drawRoundRect(x, y + 1, 16, 16, 4, 4);
+                g2.fillRoundRect(x + 2, y + 3, 6, 12, 2, 2);
+                g2.dispose();
+            }
+        };
+    }
+
+    /** Menampilkan/menyembunyikan sidebar kiri dan menyesuaikan ulang tata letak. */
+    private void toggleSidebar() {
+        boolean visible = !sidebar.isVisible();
+        sidebar.setVisible(visible);
+        // Kolom kiri header menyempit saat sidebar disembunyikan (konten melebar)
+        int hiddenWidth = sidebarToggleBtn.getPreferredSize().width + 4;
+        brandBox.setPreferredSize(new Dimension(
+                visible ? SIDEBAR_WIDTH + 5 - 14 : hiddenWidth,
+                brandBox.getPreferredSize().height));
+        headerToolbar.revalidate();
+        layoutContentLayer();
+        SwingUtilities.invokeLater(this::updateSearchControlsWidth);
+    }
+
+    /** Baris navigasi (Hasil Pencarian / Favorit) yang bisa diklik untuk berganti view. */
+    private JLabel createNavRow(String label, Runnable action) {
+        JLabel row = new JLabel(label);
+        row.setOpaque(true);
+        row.setBorder(new EmptyBorder(10, 9, 10, 6));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        row.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                action.run();
+            }
+        });
+        return row;
+    }
+
+    /** Mewarnai baris nav sesuai view yang sedang aktif. */
+    private void refreshNavHighlight() {
+        if (navSearchRow == null || navFavoritesRow == null) return;
+        applyRowStyle(navSearchRow, activeView == SidebarView.SEARCH_RESULTS);
+        applyRowStyle(navFavoritesRow, activeView == SidebarView.COLLECTION && activeProject.equals(favoritesPath()));
+    }
+
+    private void applyRowStyle(JLabel row, boolean active) {
+        row.setFont(row.getFont().deriveFont(active ? Font.BOLD : Font.PLAIN, 12f));
+        row.setBackground(active ? new Color(228, 235, 251) : new Color(248, 249, 252));
+        row.setForeground(active ? new Color(48, 78, 158) : new Color(60, 60, 60));
+    }
+
+    /** Menyusun ulang daftar koleksi (folder di projects/) dengan koleksi aktif disorot. */
+    private void refreshKoleksiList() {
+        if (koleksiListPanel == null) return;
+        koleksiListPanel.removeAll();
+        if (koleksiListExpanded) {
+            Path projectsRoot = Path.of("projects").toAbsolutePath().normalize();
+            List<Path> koleksiList = new ArrayList<>();
+            try (var stream = Files.list(projectsRoot)) {
+                stream.filter(Files::isDirectory).map(Path::toAbsolutePath).sorted().forEach(koleksiList::add);
+            } catch (Exception ignored) {
+                // Folder projects/ belum ada — daftar tetap menampilkan koleksi aktif
+            }
+
+            if (koleksiList.isEmpty()) {
+                JLabel empty = new JLabel("Belum ada koleksi");
+                empty.setFont(empty.getFont().deriveFont(Font.ITALIC, 11f));
+                empty.setForeground(new Color(150, 150, 150));
+                empty.setBorder(new EmptyBorder(4, 26, 4, 4));
+                empty.setAlignmentX(Component.LEFT_ALIGNMENT);
+                koleksiListPanel.add(empty);
+            }
+            for (Path path : koleksiList) {
+                koleksiListPanel.add(createKoleksiRow(path, isCollectionInView(path)));
+            }
+            if (!koleksiList.contains(activeProject)) {
+                koleksiListPanel.add(createKoleksiRow(activeProject, isCollectionInView(activeProject)));
+            }
+        }
+        koleksiListPanel.revalidate();
+        koleksiListPanel.repaint();
+    }
+
+    /** Baris koleksi: klik = muat artikel koleksi, klik kanan = hapus. */
+    private JLabel createKoleksiRow(Path path, boolean active) {
+        Integer count = koleksiCountCache.computeIfAbsent(path, p -> {
+            try {
+                return ArticleStorage.scanWorkspace(p).size();
+            } catch (Exception ex) {
+                return 0; // koleksi rusak/tak terbaca tidak boleh menggagalkan startup
+            }
+        });
+        JLabel row = new JLabel(collectionDisplayName(path) + "  (" + count + ")");
+        row.setFont(row.getFont().deriveFont(active ? Font.BOLD : Font.PLAIN, 12f));
+        row.setOpaque(true);
+        row.setBorder(new EmptyBorder(6, 26, 6, 6));
+        row.setToolTipText(path.toString());
+        row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        if (active) {
+            row.setBackground(new Color(228, 235, 251));
+            row.setForeground(new Color(48, 78, 158));
+        } else {
+            row.setBackground(new Color(248, 249, 252));
+            row.setForeground(new Color(60, 60, 60));
+        }
+        row.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isRightMouseButton(e)) {
+                    showCollectionContextMenu(e, path, row);
+                } else {
+                    openCollection(path);
+                }
+            }
+        });
+        return row;
+    }
+
+    private boolean isCollectionInView(Path path) {
+        return activeView == SidebarView.COLLECTION && activeProject.equals(path);
+    }
+
+    private String collectionDisplayName(Path path) {
+        String defaultWorkspace = Path.of(".").toAbsolutePath().normalize().toString();
+        if (path.toString().equals(defaultWorkspace)) return "Default workspace";
+        return path.getFileName() == null ? path.toString() : path.getFileName().toString();
+    }
+
+    private void showCollectionContextMenu(MouseEvent e, Path path, Component row) {
+        JPopupMenu menu = new JPopupMenu();
+        JMenuItem deleteItem = new JMenuItem("Hapus Koleksi...");
+        deleteItem.addActionListener(ev -> deleteCollection(path));
+        menu.add(deleteItem);
+        menu.show(row, e.getX(), e.getY());
+    }
+
+    /** Menghapus folder koleksi secara rekursif setelah konfirmasi pengguna. */
+    private void deleteCollection(Path path) {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Hapus koleksi \"" + collectionDisplayName(path) + "\" beserta seluruh isinya?",
+                "Hapus Koleksi", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) return;
+        try (var walk = Files.walk(path)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.deleteIfExists(p);
+                } catch (Exception ignored) {}
+            });
+        } catch (Exception ignored) {}
+        koleksiCountCache.clear();
+        if (activeProject.equals(path)) {
+            activeProject = Path.of(".").toAbsolutePath().normalize();
+        }
+        if (isCollectionInView(path)) {
+            showSearchResults(); // koleksi yang sedang dilihat hilang → kembali ke hasil pencarian
+        } else {
+            refreshKoleksiList();
+        }
+    }
+
+    /** Menetapkan koleksi/folder proyek aktif lalu menyorotnya di daftar. */
+    private void setActiveProject(Path path) {
+        this.activeProject = path;
+        refreshKoleksiList();
     }
 
     private void chooseProjectFolder() {
         JFileChooser chooser = new JFileChooser(activeProject.toFile());
-        chooser.setDialogTitle("Pilih folder proyek");
+        chooser.setDialogTitle("Pilih folder koleksi");
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         chooser.setAcceptAllFileFilterUsed(false);
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            activeProject = chooser.getSelectedFile().toPath().toAbsolutePath().normalize();
-            projectPathLabel.setText(activeProject.getFileName() == null ? activeProject.toString() : activeProject.getFileName().toString());
-            projectPathLabel.setToolTipText(activeProject.toString());
+            setActiveProject(chooser.getSelectedFile().toPath().toAbsolutePath().normalize());
         }
     }
 
     private void createProjectFolder() {
-        String name = JOptionPane.showInputDialog(this, "Nama proyek baru:", "Buat Proyek", JOptionPane.PLAIN_MESSAGE);
+        String name = JOptionPane.showInputDialog(this, "Nama koleksi baru:", "Buat Koleksi", JOptionPane.PLAIN_MESSAGE);
         if (name == null) return;
         name = name.strip();
         if (name.isEmpty() || name.contains("/") || name.contains("\\") || name.equals(".") || name.equals("..")) {
-            JOptionPane.showMessageDialog(this, "Masukkan nama folder proyek yang valid.", "Nama Proyek", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Masukkan nama koleksi yang valid.", "Buat Koleksi", JOptionPane.WARNING_MESSAGE);
             return;
         }
         Path projectsRoot = Path.of("projects").toAbsolutePath().normalize();
         Path newProject = projectsRoot.resolve(name).normalize();
         if (!newProject.getParent().equals(projectsRoot)) {
-            JOptionPane.showMessageDialog(this, "Nama proyek tidak valid.", "Nama Proyek", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Nama koleksi tidak valid.", "Buat Koleksi", JOptionPane.WARNING_MESSAGE);
             return;
         }
         try {
             Files.createDirectories(newProject);
-            activeProject = newProject;
-            projectPathLabel.setText(name);
-            projectPathLabel.setToolTipText(activeProject.toString());
+            setActiveProject(newProject);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Gagal membuat proyek: " + ex.getMessage(), "Proyek", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Gagal membuat koleksi: " + ex.getMessage(), "Buat Koleksi", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -408,24 +638,27 @@ public class GoCrawlGui extends JFrame {
         int headerHeight = headerToolbar.getPreferredSize().height;
         boolean filterOpen = advancedSearchPanel.isVisible();
         int filterHeight = filterOpen ? advancedSearchPanel.getPreferredSize().height : 0;
+        int contentLeft = sidebar.isVisible() ? SIDEBAR_WIDTH + 5 : 14 + sidebarToggleBtn.getPreferredSize().width + 4;
 
         headerToolbar.setBounds(0, 0, contentLayer.getWidth(), headerHeight);
 
-        // Sidebar tidak ikut turun: tetap menempel di bawah bar pencarian
-        sidebar.setBounds(0, headerHeight, SIDEBAR_WIDTH,
-                Math.max(0, contentLayer.getHeight() - headerHeight));
+        if (sidebar.isVisible()) {
+            // Sidebar tidak ikut turun: tetap menempel di bawah bar pencarian
+            sidebar.setBounds(0, headerHeight, SIDEBAR_WIDTH,
+                    Math.max(0, contentLayer.getHeight() - headerHeight));
+        }
 
-        // Baris filter lanjutan hanya mengisi area di kanan sidebar (rata dengan bar)
+        // Baris filter lanjutan mengisi area konten (rata dengan bar pencarian)
         if (filterOpen) {
-            advancedSearchPanel.setBounds(SIDEBAR_WIDTH + 5, headerHeight,
-                    Math.max(0, contentLayer.getWidth() - SIDEBAR_WIDTH - 5),
+            advancedSearchPanel.setBounds(contentLeft, headerHeight,
+                    Math.max(0, contentLayer.getWidth() - contentLeft),
                     advancedSearchPanel.getPreferredSize().height);
         }
 
-        // Hanya konten tengah (tabel + inspector) yang turun mengikuti baris filter
+        // Konten tengah turun mengikuti baris filter; melebar penuh saat sidebar disembunyikan
         int contentTop = headerHeight + filterHeight;
-        mainSplit.setBounds(SIDEBAR_WIDTH + 5, contentTop,
-                Math.max(0, contentLayer.getWidth() - SIDEBAR_WIDTH - 5),
+        mainSplit.setBounds(contentLeft, contentTop,
+                Math.max(0, contentLayer.getWidth() - contentLeft),
                 Math.max(0, contentLayer.getHeight() - contentTop));
         updateSearchControlsWidth();
     }
@@ -529,6 +762,11 @@ public class GoCrawlGui extends JFrame {
         masterArticleList.clear();
         tablePanel.clearArticles();
         showArticleInInspector(null); // sembunyikan inspector saat pencarian baru
+
+        // Mulai crawl = view kembali ke Hasil Pencarian
+        activeView = SidebarView.SEARCH_RESULTS;
+        refreshNavHighlight();
+        refreshKoleksiList();
 
         loadPage(1);
     }
@@ -705,8 +943,9 @@ public class GoCrawlGui extends JFrame {
 
             @Override
             protected void done() {
-                crawlBtn.setText("Mulai Crawl");
-                crawlBtn.setForeground(null);
+                crawlBtn.setText("🔍 Cari");
+                crawlBtn.setBackground(SEARCH_BTN_BLUE);
+                crawlBtn.setForeground(Color.WHITE);
                 tablePanel.setPaginationEnabled(true);
 
                 if (isCancelled()) {
@@ -721,11 +960,7 @@ public class GoCrawlGui extends JFrame {
 
                     // Kumpulkan ke master list untuk ekspor bibliografi (deduplikasi berdasarkan URL/DOI)
                     for (Article a : articles) {
-                        boolean exists = masterArticleList.stream().anyMatch(m ->
-                                (!m.url().isBlank() && m.url().equalsIgnoreCase(a.url())) ||
-                                (!m.doi().isBlank() && m.doi().equalsIgnoreCase(a.doi())) ||
-                                m.title().equalsIgnoreCase(a.title()));
-                        if (!exists) {
+                        if (!articleExists(masterArticleList, a)) {
                             masterArticleList.add(a);
                         }
                     }
@@ -749,7 +984,7 @@ public class GoCrawlGui extends JFrame {
     /**
      * Menu "File → Simpan Hasil Pencarian": menyimpan akumulasi hasil crawl saat ini
      * (masterArticleList, sudah dideduplikasi) ke berkas JSON pilihan pengguna.
-     * Dialog dibuka di folder proyek aktif.
+     * Dialog dibuka di folder koleksi aktif.
      */
     private void saveResultsManually() {
         if (masterArticleList.isEmpty()) {
@@ -776,6 +1011,7 @@ public class GoCrawlGui extends JFrame {
         }
         try {
             ArticleStorage.saveJson(target, masterArticleList);
+            koleksiCountCache.clear();
             JOptionPane.showMessageDialog(this,
                     "Berhasil menyimpan " + masterArticleList.size() + " artikel ke:\n" + target,
                     "Simpan Hasil Pencarian", JOptionPane.INFORMATION_MESSAGE);
@@ -789,16 +1025,186 @@ public class GoCrawlGui extends JFrame {
     private void saveSearchOutput() {
         if (masterArticleList.isEmpty()) return;
         try {
-            Path outDir = Path.of("output", "garuda_search");
+            // Auto-save masuk ke koleksi aktif agar konsep "koleksi artikel" terisi otomatis;
+            // default workspace tetap memakai folder output lama
+            Path defaultWorkspace = Path.of(".").toAbsolutePath().normalize();
+            Path outDir = activeProject.equals(defaultWorkspace)
+                    ? Path.of("output", "garuda_search")
+                    : activeProject;
             Files.createDirectories(outDir);
             ArticleStorage.saveJson(outDir.resolve("articles.json"), masterArticleList);
+            koleksiCountCache.clear();
         } catch (Exception ignored) {}
+    }
+
+    /** Menghentikan worker pencarian yang sedang berjalan (tanpa mengubah pesan status). */
+    private void cancelRunningSearch() {
+        if (currentSearchWorker != null && !currentSearchWorker.isDone()) {
+            currentSearchWorker.cancel(true);
+            crawlBtn.setText("🔍 Cari");
+            crawlBtn.setBackground(SEARCH_BTN_BLUE);
+            crawlBtn.setForeground(Color.WHITE);
+            tablePanel.setPaginationEnabled(true);
+        }
+    }
+
+    /** Menampilkan kembali hasil pencarian (crawl) yang sedang/terakhir berjalan. */
+    private void showSearchResults() {
+        cancelRunningSearch();
+        activeView = SidebarView.SEARCH_RESULTS;
+        refreshNavHighlight();
+        refreshKoleksiList();
+        if (pageCache.containsKey(currentSearchPage)) {
+            List<Article> cached = pageCache.get(currentSearchPage);
+            tablePanel.setArticles(cached);
+            tablePanel.updatePagination(currentSearchPage, totalSearchPages, totalRecordsFound, cached.size());
+        } else if (!masterArticleList.isEmpty()) {
+            tablePanel.setArticles(new ArrayList<>(masterArticleList));
+            tablePanel.updatePagination(1, 1, masterArticleList.size(), masterArticleList.size());
+        } else {
+            tablePanel.setArticles(Collections.emptyList());
+            tablePanel.updatePagination(1, 1, 0, 0);
+            tablePanel.setProgress(false, "Belum ada pencarian — jalankan crawl untuk melihat hasil.");
+        }
+    }
+
+    /** Memastikan folder koleksi Favorit tersedia. */
+    private Path favoritesPath() {
+        return Path.of("projects", "Favorit").toAbsolutePath().normalize();
+    }
+
+    /** Membuka koleksi Favorit (dibuat otomatis bila belum ada). */
+    private void openFavorites() {
+        try {
+            Files.createDirectories(favoritesPath());
+        } catch (Exception ignored) {}
+        openCollection(favoritesPath());
+    }
+
+    /** Menambahkan artikel ke koleksi Favorit (deduplikasi otomatis). */
+    private void addArticleToFavorites(Article article) {
+        Path favorites = favoritesPath();
+        boolean added = appendArticleToCollection(favorites, article);
+        if (added) {
+            tablePanel.setProgress(false, "★ Ditambahkan ke Favorit");
+            if (activeView == SidebarView.COLLECTION && activeProject.equals(favorites)) {
+                openCollection(favorites); // segarkan tabel bila view Favorit sedang terbuka
+            }
+        } else {
+            tablePanel.setProgress(false, "Artikel sudah ada di Favorit");
+        }
+    }
+
+    /** Menambahkan satu artikel ke koleksi tertentu; false bila sudah ada di dalamnya. */
+    private boolean appendArticleToCollection(Path collection, Article article) {
+        try {
+            Files.createDirectories(collection);
+            Path json = collection.resolve("articles.json");
+            List<Article> existing = new ArrayList<>();
+            if (Files.exists(json)) {
+                existing.addAll(ArticleStorage.parseJson(Files.readString(json, StandardCharsets.UTF_8)));
+            }
+            if (articleExists(existing, article)) {
+                return false;
+            }
+            existing.add(article);
+            ArticleStorage.saveJson(json, existing);
+            koleksiCountCache.remove(collection);
+            return true;
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Gagal menambahkan ke koleksi: " + ex.getMessage(),
+                    "Tambah ke Koleksi", JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+    }
+
+    /** Dialog pilih tujuan koleksi untuk menambahkan satu artikel. */
+    private void showAddToCollectionDialog(Article article) {
+        List<Path> koleksiList = new ArrayList<>();
+        Path projectsRoot = Path.of("projects").toAbsolutePath().normalize();
+        try (var stream = Files.list(projectsRoot)) {
+            stream.filter(Files::isDirectory).map(Path::toAbsolutePath).sorted().forEach(koleksiList::add);
+        } catch (Exception ignored) {}
+        if (koleksiList.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Belum ada koleksi. Buat dulu lewat tombol + di sidebar.",
+                    "Tambah ke Koleksi", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JComboBox<Path> combo = new JComboBox<>(koleksiList.toArray(new Path[0]));
+        combo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                          boolean selected, boolean focused) {
+                Component c = super.getListCellRendererComponent(list, value, index, selected, focused);
+                setText(collectionDisplayName((Path) value));
+                return c;
+            }
+        });
+        String title = article.title();
+        if (title.length() > 48) title = title.substring(0, 45) + "...";
+        JPanel panel = new JPanel(new BorderLayout(0, 8));
+        panel.add(new JLabel("Pilih tujuan koleksi untuk \"" + title + "\":"), BorderLayout.NORTH);
+        panel.add(combo, BorderLayout.CENTER);
+        int choice = JOptionPane.showConfirmDialog(this, panel, "Tambahkan ke Koleksi",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) return;
+
+        Path target = (Path) combo.getSelectedItem();
+        if (appendArticleToCollection(target, article)) {
+            JOptionPane.showMessageDialog(this,
+                    "Artikel ditambahkan ke koleksi \"" + collectionDisplayName(target) + "\".",
+                    "Tambah ke Koleksi", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this, "Artikel sudah ada di koleksi tersebut.",
+                    "Tambah ke Koleksi", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    /** Memuat artikel tersimpan dalam sebuah koleksi ke tabel. */
+    private void openCollection(Path path) {
+        cancelRunningSearch();
+        activeView = SidebarView.COLLECTION;
+        setActiveProject(path);
+        refreshNavHighlight();
+        List<Article> saved = ArticleStorage.scanWorkspace(path);
+        tablePanel.setArticles(saved);
+        tablePanel.updatePagination(1, 1, saved.size(), saved.size());
+        tablePanel.setProgress(false, saved.isEmpty()
+                ? "Koleksi \"" + collectionDisplayName(path) + "\" masih kosong."
+                : "");
+    }
+
+    /** Deteksi duplikat artikel berdasarkan URL, DOI, atau judul. */
+    private static boolean articleExists(List<Article> articles, Article article) {
+        return articles.stream().anyMatch(m ->
+                (!m.url().isBlank() && m.url().equalsIgnoreCase(article.url())) ||
+                (!m.doi().isBlank() && m.doi().equalsIgnoreCase(article.doi())) ||
+                m.title().equalsIgnoreCase(article.title()));
+    }
+
+    /** Bilah judul abu-abu senada, lewat window decorations FlatLaf. */
+    private static void applyTitleBarTheme() {
+        // TitlePane.background dipakai FlatTitlePane sebagai warna bilah saat aktif,
+        // TAPI hanya efektif bila client property JRootPane.titleBarBackground juga
+        // diset di initUI — tanpa itu bilah "unified" mengikuti latar window putih
+        UIManager.put("TitlePane.background", TITLE_BAR_BACKGROUND);
+        UIManager.put("TitlePane.embeddedForeground", Color.WHITE);
+        // Menu File/Katalog yang menempel di bilah judul ikut senada
+        UIManager.put("MenuBar.background", TITLE_BAR_BACKGROUND);
+        UIManager.put("MenuBar.foreground", Color.WHITE);
+        UIManager.put("MenuBar.itemHoverBackground", TITLE_BAR_HOVER);
+        // Tombol tutup memakai aksen merah khas Windows saat di-hover
+        UIManager.put("TitlePane.closeHoverBackground", new Color(232, 17, 35));
+        UIManager.put("TitlePane.closePressedBackground", new Color(249, 56, 66));
     }
 
     public static void launch() {
         SwingUtilities.invokeLater(() -> {
             try {
                 FlatLightLaf.setup();
+                applyTitleBarTheme();
             } catch (Exception ignored) {}
             new GoCrawlGui().setVisible(true);
         });
