@@ -347,12 +347,13 @@ public class GoCrawlGui extends JFrame {
         return sidebar;
     }
 
-    /** Tombol ikon polos tanpa border (gaya toolBarButton). */
+    /** Tombol ikon polos tanpa border (gaya toolBarButton), tanpa cincin fokus. */
     private void flatIconButton(JButton button, String tooltip) {
         button.putClientProperty("JButton.buttonType", "toolBarButton");
         button.setToolTipText(tooltip);
         button.setFont(button.getFont().deriveFont(Font.BOLD, 13f));
         button.setMargin(new Insets(2, 6, 2, 6));
+        button.setFocusable(false); // cegah border biru fokus setelah diklik
     }
 
     /** Ikon toggle sidebar sederhana: bingkai kotak + garis pembagi panel kiri. */
@@ -655,9 +656,9 @@ public class GoCrawlGui extends JFrame {
         }
 
         if (sidebar.isVisible()) {
-            // Sidebar tidak ikut turun: tetap menempel di bawah bar pencarian
-            sidebar.setBounds(0, headerHeight, SIDEBAR_WIDTH,
-                    Math.max(0, contentLayer.getHeight() - headerHeight));
+            // Sidebar pentok ke atas: dari tepi bilah judul sampai dasar jendela
+            // (baris filter lanjutan hanya ada di kolom konten, tidak menyentuhnya)
+            sidebar.setBounds(0, 0, SIDEBAR_WIDTH, contentLayer.getHeight());
         }
 
         // Baris filter lanjutan mengisi area konten (rata dengan bar pencarian)
