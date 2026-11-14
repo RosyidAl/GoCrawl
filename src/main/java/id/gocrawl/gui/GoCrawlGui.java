@@ -355,22 +355,22 @@ public class GoCrawlGui extends JFrame {
         button.setMargin(new Insets(2, 6, 2, 6));
     }
 
-    /** Ikon toggle sidebar: bingkai kotak dengan panel kiri terisi. */
+    /** Ikon toggle sidebar sederhana: bingkai kotak + garis pembagi panel kiri. */
     private Icon createSidebarToggleIcon() {
         return new Icon() {
             @Override
-            public int getIconWidth() { return 18; }
+            public int getIconWidth() { return 14; }
 
             @Override
-            public int getIconHeight() { return 18; }
+            public int getIconHeight() { return 14; }
 
             @Override
             public void paintIcon(Component c, Graphics g, int x, int y) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(c.getForeground());
-                g2.drawRoundRect(x, y + 1, 16, 16, 4, 4);
-                g2.fillRoundRect(x + 2, y + 3, 6, 12, 2, 2);
+                g2.drawRoundRect(x, y, 13, 13, 3, 3);
+                g2.drawLine(x + 5, y + 2, x + 5, y + 11);
                 g2.dispose();
             }
         };
@@ -646,11 +646,12 @@ public class GoCrawlGui extends JFrame {
 
         headerToolbar.setBounds(0, 0, contentLayer.getWidth(), headerHeight);
 
-        // Tombol toggle mengambang di bilah judul: kiri tiga tombol jendela (±132px)
+        // Tombol toggle mengambang di bilah judul: kiri tiga tombol jendela (±132px),
+        // dikecilkan dan dipusatkan vertikal agar tidak mentok tepi atas
         if (sidebarToggleBtn != null) {
             int toggleX = Math.max(0, getRootPane().getWidth() - 3 * 44 - 8
                     - sidebarToggleBtn.getPreferredSize().width);
-            sidebarToggleBtn.setBounds(toggleX, 1, sidebarToggleBtn.getPreferredSize().width, 30);
+            sidebarToggleBtn.setBounds(toggleX, 3, sidebarToggleBtn.getPreferredSize().width, 26);
         }
 
         if (sidebar.isVisible()) {
