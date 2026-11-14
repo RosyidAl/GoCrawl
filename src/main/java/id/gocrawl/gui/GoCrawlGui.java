@@ -427,30 +427,34 @@ public class GoCrawlGui extends JFrame {
     private void refreshKoleksiList() {
         if (koleksiListPanel == null) return;
         koleksiListPanel.removeAll();
-        if (koleksiListExpanded) {
-            Path projectsRoot = Path.of("projects").toAbsolutePath().normalize();
-            List<Path> koleksiList = new ArrayList<>();
-            try (var stream = Files.list(projectsRoot)) {
-                stream.filter(Files::isDirectory).map(Path::toAbsolutePath).sorted().forEach(koleksiList::add);
-            } catch (Exception ignored) {
-                // Folder projects/ belum ada — daftar tetap menampilkan koleksi aktif
-            }
+            if (koleksiListExpanded) {
+                Path projectsRoot = Path.of("projects").toAbsolutePath().normalize();
+                List<Path> koleksiList = new ArrayList<>();
+                try (var stream = Files.list(projectsRoot)) {
+                    stream.filter(Files::isDirectory).map(Path::toAbsolutePath).sorted().forEach(koleksiList::add);
+                } catch (Exception ignored) {
+                    // Folder projects/ belum ada — daftar tetap menampilkan koleksi aktif
+                }
 
-            if (koleksiList.isEmpty()) {
-                JLabel empty = new JLabel("Belum ada koleksi");
-                empty.setFont(empty.getFont().deriveFont(Font.ITALIC, 11f));
-                empty.setForeground(new Color(150, 150, 150));
-                empty.setBorder(new EmptyBorder(4, 26, 4, 4));
-                empty.setAlignmentX(Component.LEFT_ALIGNMENT);
-                koleksiListPanel.add(empty);
+                // Baris Default workspace SELALU tampil: tempat auto-save hasil crawl
+                // ketika tidak ada koleksi yang dipilih
+                Path defaultWorkspace = Path.of(".").toAbsolutePath().normalize();
+                if (!koleksiList.contains(defaultWorkspace)) {
+                    koleksiListPanel.add(createKoleksiRow(defaultWorkspace, isCollectionInView(defaultWorkspace)));
+                }
+
+                if (koleksiList.isEmpty()) {
+                    JLabel empty = new JLabel("Belum ada koleksi");
+                    empty.setFont(empty.getFont().deriveFont(Font.ITALIC, 11f));
+                    empty.setForeground(new Color(150, 150, 150));
+                    empty.setBorder(new EmptyBorder(4, 26, 4, 4));
+                    empty.setAlignmentX(Component.LEFT_ALIGNMENT);
+                    koleksiListPanel.add(empty);
+                }
+                for (Path path : koleksiList) {
+                    koleksiListPanel.add(createKoleksiRow(path, isCollectionInView(path)));
+                }
             }
-            for (Path path : koleksiList) {
-                koleksiListPanel.add(createKoleksiRow(path, isCollectionInView(path)));
-            }
-            if (!koleksiList.contains(activeProject)) {
-                koleksiListPanel.add(createKoleksiRow(activeProject, isCollectionInView(activeProject)));
-            }
-        }
         koleksiListPanel.revalidate();
         koleksiListPanel.repaint();
     }
