@@ -1,15 +1,15 @@
 [
   {
-    "queryKey": "eduthinkjurnalpemikiranpendidikanislam",
-    "journalName": "EDUTHINK: Jurnal Pemikiran Pendidikan Islam",
+    "queryKey": "jurnalansirupaijurnalpengembanganprofesigurupendidikanagamaislam",
+    "journalName": "JURNAL ANSIRU PAI : Jurnal Pengembangan Profesi Guru Pendidikan Agama Islam",
     "sintaRank": "-",
     "publisher": "-",
     "ojsUrl": "-",
     "garudaId": "-"
   },
   {
-    "queryKey": "jurnalansirupaijurnalpengembanganprofesigurupendidikanagamaislam",
-    "journalName": "JURNAL ANSIRU PAI : Jurnal Pengembangan Profesi Guru Pendidikan Agama Islam",
+    "queryKey": "eduthinkjurnalpemikiranpendidikanislam",
+    "journalName": "EDUTHINK: Jurnal Pemikiran Pendidikan Islam",
     "sintaRank": "-",
     "publisher": "-",
     "ojsUrl": "-",
@@ -40,20 +40,20 @@
     "garudaId": "-"
   },
   {
-    "queryKey": "sosialjurnalilmiahpendidikanips",
-    "journalName": "SOSIAL : Jurnal Ilmiah Pendidikan IPS",
-    "sintaRank": "-",
-    "publisher": "-",
-    "ojsUrl": "-",
-    "garudaId": "-"
-  },
-  {
     "queryKey": "historiographyjournalofindonesianhistoryandeducation",
     "journalName": "Historiography: Journal of Indonesian History and Education",
     "sintaRank": "S4",
     "publisher": "Universitas Negeri Malang",
     "ojsUrl": "http://journal2.um.ac.id/index.php/JDS/index",
     "garudaId": "27964"
+  },
+  {
+    "queryKey": "sosialjurnalilmiahpendidikanips",
+    "journalName": "SOSIAL : Jurnal Ilmiah Pendidikan IPS",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "alkainahjournalofislamicstudies",
@@ -184,20 +184,20 @@
     "garudaId": "14925"
   },
   {
-    "queryKey": "jurnalfatwahukum",
-    "journalName": "Jurnal Fatwa Hukum",
-    "sintaRank": "-",
-    "publisher": "-",
-    "ojsUrl": "-",
-    "garudaId": "-"
-  },
-  {
     "queryKey": "journalofinnovativeandcreativity",
     "journalName": "Journal of Innovative and Creativity",
     "sintaRank": "S5",
     "publisher": "Universitas Pahlawan Tuanku Tambusai",
     "ojsUrl": "https://joecy.org/index.php/joecy",
     "garudaId": "34878"
+  },
+  {
+    "queryKey": "jurnalfatwahukum",
+    "journalName": "Jurnal Fatwa Hukum",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "islamiccommunicationjournal",
@@ -272,14 +272,6 @@
     "garudaId": "31558"
   },
   {
-    "queryKey": "journalsainsstudentresearch",
-    "journalName": "JOURNAL SAINS STUDENT RESEARCH",
-    "sintaRank": "-",
-    "publisher": "-",
-    "ojsUrl": "-",
-    "garudaId": "-"
-  },
-  {
     "queryKey": "jupiter",
     "journalName": "Jupiter: Publikasi Ilmu Keteknikan Industri, Teknik Elektro dan Informatika",
     "sintaRank": "S4",
@@ -288,8 +280,8 @@
     "garudaId": "37787"
   },
   {
-    "queryKey": "indonesianjournalofinformaticresearchandsoftwareengineering",
-    "journalName": "Indonesian Journal of Informatic Research and Software Engineering (IJIRSE)",
+    "queryKey": "journalsainsstudentresearch",
+    "journalName": "JOURNAL SAINS STUDENT RESEARCH",
     "sintaRank": "-",
     "publisher": "-",
     "ojsUrl": "-",
@@ -304,8 +296,8 @@
     "garudaId": "41389"
   },
   {
-    "queryKey": "rabbayanijurnalpendidikandanperadabanislami",
-    "journalName": "RABBAYANI: Jurnal Pendidikan dan Peradaban Islami",
+    "queryKey": "indonesianjournalofinformaticresearchandsoftwareengineering",
+    "journalName": "Indonesian Journal of Informatic Research and Software Engineering (IJIRSE)",
     "sintaRank": "-",
     "publisher": "-",
     "ojsUrl": "-",
@@ -318,6 +310,14 @@
     "publisher": "Pusat Penelitian Kemasyarakatan dan Kebudayaan, LIPI",
     "ojsUrl": "http://jmb.lipi.go.id/index.php/jmb",
     "garudaId": "14662"
+  },
+  {
+    "queryKey": "rabbayanijurnalpendidikandanperadabanislami",
+    "journalName": "RABBAYANI: Jurnal Pendidikan dan Peradaban Islami",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "sistemasijurnalsisteminformasi",
@@ -512,20 +512,20 @@
     "garudaId": "27436"
   },
   {
-    "queryKey": "tadhkirahjurnalterapanhukumislamdankajianfilsafatsyariah",
-    "journalName": "TADHKIRAH: Jurnal Terapan Hukum Islam dan Kajian Filsafat Syariah",
-    "sintaRank": "-",
-    "publisher": "-",
-    "ojsUrl": "-",
-    "garudaId": "-"
-  },
-  {
     "queryKey": "jurnalilmiahekonomiislam",
     "journalName": "Jurnal Ilmiah Ekonomi Islam",
     "sintaRank": "S3",
     "publisher": "LPPM STIE AAS Surakarta",
     "ojsUrl": "http://www.jurnal.stie-aas.ac.id/index.php/jei/",
     "garudaId": "10171"
+  },
+  {
+    "queryKey": "tadhkirahjurnalterapanhukumislamdankajianfilsafatsyariah",
+    "journalName": "TADHKIRAH: Jurnal Terapan Hukum Islam dan Kajian Filsafat Syariah",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "atthariqjurnalstudiislamdanbudaya",
@@ -536,12 +536,12 @@
     "garudaId": "27392"
   },
   {
-    "queryKey": "ideasjurnalpendidikansosialdanbudaya",
-    "journalName": "IDEAS : Journal on English Language Teaching and Learning, Linguistics and Literature",
-    "sintaRank": "S3",
-    "publisher": "Institut Agama Islam Negeri Palopo",
-    "ojsUrl": "http://ejournal.iainpalopo.ac.id/index.php/ideas/index",
-    "garudaId": "16787"
+    "queryKey": "talimjurnalpendidikanagamaislamdanmanajemenpendidikanislam",
+    "journalName": "Ta lim Jurnal Pendidikan Agama Islam dan Manajemen Pendidikan Islam",
+    "sintaRank": "-",
+    "publisher": "-",
+    "ojsUrl": "-",
+    "garudaId": "-"
   },
   {
     "queryKey": "buletinilmiahsarjanateknikelektro",
@@ -552,12 +552,12 @@
     "garudaId": "16332"
   },
   {
-    "queryKey": "talimjurnalpendidikanagamaislamdanmanajemenpendidikanislam",
-    "journalName": "Ta lim Jurnal Pendidikan Agama Islam dan Manajemen Pendidikan Islam",
-    "sintaRank": "-",
-    "publisher": "-",
-    "ojsUrl": "-",
-    "garudaId": "-"
+    "queryKey": "ideasjurnalpendidikansosialdanbudaya",
+    "journalName": "IDEAS : Journal on English Language Teaching and Learning, Linguistics and Literature",
+    "sintaRank": "S3",
+    "publisher": "Institut Agama Islam Negeri Palopo",
+    "ojsUrl": "http://ejournal.iainpalopo.ac.id/index.php/ideas/index",
+    "garudaId": "16787"
   },
   {
     "queryKey": "rechtsregeljurnalilmuhukum",
@@ -1662,6 +1662,14 @@
     "publisher": "Fakultas Ushuluddin Universitas Darussalam (UNIDA) Gontor-Indonesia",
     "ojsUrl": "http://ejournal.unida.gontor.ac.id/index.php/kalimah/index",
     "garudaId": "7638"
+  },
+  {
+    "queryKey": "tadabburjurnalperadabanislam",
+    "journalName": "Tadabbur: Jurnal Peradaban Islam",
+    "sintaRank": "S3",
+    "publisher": "Prodi Magister (S2) Pendidikan Agama Islam Pascasarjana UIN Ar-Raniry Banda Aceh bekerja sama dengan Lembaga Penelitian dan Pengabdian kepada Masyarakat (LP2M)",
+    "ojsUrl": "https://jim.ar-raniry.ac.id/index.php/tadabbur/index",
+    "garudaId": "16492"
   },
   {
     "queryKey": "atthullabjurnalmahasiswastudiislam",

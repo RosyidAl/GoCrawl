@@ -83,7 +83,8 @@ public class OjsCrawler {
 
     /**
      * Memperkaya artikel parsial dengan metadata lengkap dari halamannya
-     * (DOI, tahun, penulis kanonik, abstrak).
+     * (DOI, tahun, penulis kanonik, abstrak, kata kunci).
+     * Tanggal: OJS 3 memakai citation_date (bukan citation_publication_date).
      */
     public Article enrich(Article partial) {
         try {
@@ -91,7 +92,10 @@ public class OjsCrawler {
             String title = meta(doc, "citation_title");
             String doi = meta(doc, "citation_doi");
             String pubDate = meta(doc, "citation_publication_date");
+            if (pubDate.isEmpty()) pubDate = meta(doc, "citation_date");
+            if (pubDate.isEmpty()) pubDate = meta(doc, "citation_online_date");
             String journal = meta(doc, "citation_journal_title");
+            String keywords = meta(doc, "citation_keywords");
 
             List<String> authors = new ArrayList<>();
             for (Element el : doc.select("meta[name=citation_author]")) {
@@ -112,9 +116,10 @@ public class OjsCrawler {
             String finalJournal = journal.isEmpty() ? partial.journal() : journal;
             String finalDoi = doi.isEmpty() ? partial.doi() : doi;
             String published = pubDate.isEmpty() ? partial.published() : pubDate;
+            String finalKeywords = keywords.isEmpty() ? partial.keywords() : keywords;
 
             return new Article(finalTitle, finalAuthors, year, finalJournal, partial.url(),
-                    abstractText, finalDoi, published, partial.keywords());
+                    abstractText, finalDoi, published, finalKeywords);
         } catch (Exception ex) {
             return partial; // metadata gagal diambil — pakai data parsial dari edisi
         }
