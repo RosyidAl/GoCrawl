@@ -249,32 +249,36 @@ public class CrawlSourcesDialog extends JDialog {
     }
 
     /**
-     * Mengambil judul portal dari halaman pencariannya. Satu kali percobaan ulang
-     * setelah jeda 3 detik — Portal Garuda kerap menolak akses (403) bila terlalu
-     * cepat. Null berarti gagal.
+     * Mengambil judul portal untuk validasi koneksi. Berlapis: coba dulu path
+     * pencarian gaya Garuda (/documents?q=...), bila tidak ada (portal OJS lain)
+     * jatuh ke URL dasarnya. Satu kali percobaan ulang setelah jeda 3 detik —
+     * portal kerap menolak akses (403) bila terlalu cepat. Null berarti gagal.
      */
     private String fetchPortalTitle(String baseUrl) {
-        for (int attempt = 1; attempt <= 2; attempt++) {
-            try {
-                org.jsoup.Connection.Response response = Jsoup.connect(baseUrl + "/documents?q=test")
-                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) GoCrawl Source Tester")
-                        .header("Accept-Language", "id,en-US;q=0.9,en;q=0.8")
-                        .timeout(15000)
-                        .ignoreHttpErrors(true)
-                        .execute();
-                if (response.statusCode() == 200) {
-                    Document doc = response.parse();
-                    String title = doc.title();
-                    return title == null || title.isBlank() ? null : title.strip();
-                }
-            } catch (Exception ignored) {
-                // coba lagi pada percobaan berikutnya
-            }
-            if (attempt == 1) {
+        String[] candidates = { baseUrl + "/documents?q=test", baseUrl };
+        for (String url : candidates) {
+            for (int attempt = 1; attempt <= 2; attempt++) {
                 try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException ie) {
-                    return null;
+                    org.jsoup.Connection.Response response = Jsoup.connect(url)
+                            .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) GoCrawl Source Tester")
+                            .header("Accept-Language", "id,en-US;q=0.9,en;q=0.8")
+                            .timeout(15000)
+                            .ignoreHttpErrors(true)
+                            .execute();
+                    if (response.statusCode() == 200) {
+                        Document doc = response.parse();
+                        String title = doc.title();
+                        return title == null || title.isBlank() ? null : title.strip();
+                    }
+                } catch (Exception ignored) {
+                    // coba lagi pada percobaan berikutnya
+                }
+                if (attempt == 1) {
+                    try {
+                        Thread.sleep(3000);
+                    } catch (InterruptedException ie) {
+                        return null;
+                    }
                 }
             }
         }
