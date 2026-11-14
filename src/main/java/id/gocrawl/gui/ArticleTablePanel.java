@@ -124,7 +124,8 @@ public class ArticleTablePanel extends JPanel {
         countLabel.setForeground(new Color(110, 110, 110));
         bottomPanel.add(countLabel, BorderLayout.WEST);
 
-        JPanel centerBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 0));
+        // Kontrol paginasi di pojok kanan bilah bawah
+        JPanel centerBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
 
         firstPageBtn.setFont(firstPageBtn.getFont().deriveFont(Font.BOLD, 14f));
         firstPageBtn.setToolTipText("Halaman Pertama");
