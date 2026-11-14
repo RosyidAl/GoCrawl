@@ -94,6 +94,10 @@ public class GoCrawlGui extends JFrame {
     private int sintaLastGarudaPageScanned = 0;
     private boolean sintaPoolExhausted = false;
     private List<CrawlSource> crawlSources;
+    private final List<Article> ojsArticlePool = Collections.synchronizedList(new ArrayList<>());
+    private List<String> ojsIssueQueue = new ArrayList<>();
+    private int ojsIssuesScanned = 0;
+    private boolean ojsExhausted = false;
 
     // State Paginasi Pencarian Garuda
     private int activePageSize = 25; // Default 25 baris untuk mengisi penuh ruang vertikal tabel
@@ -783,6 +787,10 @@ public class GoCrawlGui extends JFrame {
         this.sintaLastGarudaPageScanned = 0;
         this.sintaPoolExhausted = false;
         this.sintaFilteredPool.clear();
+        this.ojsArticlePool.clear();
+        this.ojsIssueQueue.clear();
+        this.ojsIssuesScanned = 0;
+        this.ojsExhausted = false;
 
         // Reset cache dan tabel untuk pencarian baru
         garudaRawPageCache.clear();
@@ -841,6 +849,10 @@ public class GoCrawlGui extends JFrame {
             JOptionPane.showMessageDialog(this,
                     "Tidak ada sumber crawl yang aktif. Atur di Katalog > Kelola Sumber Crawl...",
                     "Sumber Crawl", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (CrawlSource.TYPE_OJS.equalsIgnoreCase(source.type())) {
+            runOjsLoad(page, source);
             return;
         }
         GarudaSearchEngine engine = new GarudaSearchEngine(source.baseUrl());
@@ -984,42 +996,137 @@ public class GoCrawlGui extends JFrame {
 
             @Override
             protected void done() {
-                crawlBtn.setText("🔍 Cari");
-                crawlBtn.setBackground(SEARCH_BTN_BLUE);
-                crawlBtn.setForeground(Color.WHITE);
-                tablePanel.setPaginationEnabled(true);
-
-                if (isCancelled()) {
-                    tablePanel.setProgress(false, "Pemuatan halaman dihentikan.");
-                    return;
-                }
-
-                try {
-                    List<Article> articles = get();
-                    currentSearchPage = page;
-                    pageCache.put(page, articles);
-
-                    // Kumpulkan ke master list untuk ekspor bibliografi (deduplikasi berdasarkan URL/DOI)
-                    for (Article a : articles) {
-                        if (!articleExists(masterArticleList, a)) {
-                            masterArticleList.add(a);
-                        }
-                    }
-
-                    tablePanel.setArticles(articles);
-                    tablePanel.updatePagination(currentSearchPage, totalSearchPages, totalRecordsFound, articles.size());
-                    // Informasi halaman/total sudah ada di label kiri & indikator "1 / N";
-                    // status dibiarkan kosong agar kontrol paginasi tidak tertimpa teks panjang
-                    tablePanel.setProgress(false, "");
-
-                    saveSearchOutput();
-                } catch (Exception e) {
-                    tablePanel.setProgress(false, "Gagal memuat Halaman " + page + ": " + e.getMessage());
-                }
+                finishPageLoad(page, this);
             }
         };
 
         currentSearchWorker.execute();
+    }
+
+    /** Penyelesaian bersama kedua engine setelah satu halaman selesai dimuat. */
+    private void finishPageLoad(int page, SwingWorker<List<Article>, String> worker) {
+        crawlBtn.setText("🔍 Cari");
+        crawlBtn.setBackground(SEARCH_BTN_BLUE);
+        crawlBtn.setForeground(Color.WHITE);
+        tablePanel.setPaginationEnabled(true);
+
+        if (worker.isCancelled()) {
+            tablePanel.setProgress(false, "Pemuatan halaman dihentikan.");
+            return;
+        }
+
+        try {
+            List<Article> articles = worker.get();
+            currentSearchPage = page;
+            pageCache.put(page, articles);
+
+            // Kumpulkan ke master list untuk ekspor bibliografi (deduplikasi berdasarkan URL/DOI)
+            for (Article a : articles) {
+                if (!articleExists(masterArticleList, a)) {
+                    masterArticleList.add(a);
+                }
+            }
+
+            tablePanel.setArticles(articles);
+            tablePanel.updatePagination(currentSearchPage, totalSearchPages, totalRecordsFound, articles.size());
+            // Informasi halaman/total sudah ada di label kiri & indikator "1 / N";
+            // status dibiarkan kosong agar kontrol paginasi tidak tertimpa teks panjang
+            tablePanel.setProgress(false, "");
+
+            saveSearchOutput();
+        } catch (Exception e) {
+            tablePanel.setProgress(false, "Gagal memuat Halaman " + page + ": " + e.getMessage());
+        }
+    }
+
+    /** Pipeline crawl untuk sumber bertipe OJS: jelajah arsip → edisi → artikel. */
+    private void runOjsLoad(int page, CrawlSource source) {
+        crawlBtn.setText("■ Stop");
+        crawlBtn.setBackground(SEARCH_BTN_RED);
+        crawlBtn.setForeground(Color.WHITE);
+        tablePanel.setPaginationEnabled(false);
+        tablePanel.setProgress(true, "Menjelajah arsip OJS ...");
+
+        OjsCrawler ojsCrawler = new OjsCrawler(source.baseUrl());
+        currentSearchWorker = new SwingWorker<List<Article>, String>() {
+            @Override
+            protected List<Article> doInBackground() {
+                // Antrian edisi dibangun sekali per pencarian
+                if (ojsIssueQueue.isEmpty() && !ojsExhausted) {
+                    publish("Membaca daftar edisi jurnal ...");
+                    ojsIssueQueue.addAll(ojsCrawler.listIssues());
+                    if (ojsIssueQueue.isEmpty()) {
+                        ojsExhausted = true;
+                    }
+                }
+
+                int targetQuota = page * activePageSize;
+                while (!ojsExhausted && ojsArticlePool.size() < targetQuota
+                        && ojsIssuesScanned < ojsIssueQueue.size()) {
+                    if (isCancelled()) break;
+                    String issueUrl = ojsIssueQueue.get(ojsIssuesScanned);
+                    ojsIssuesScanned++;
+                    publish("Memindai edisi " + ojsIssuesScanned + " dari " + ojsIssueQueue.size() + " ...");
+
+                    for (Article raw : ojsCrawler.parseIssue(issueUrl)) {
+                        if (isCancelled()) break;
+                        if (!keywordMatches(activeKeyword, raw)) continue;
+                        Article enriched = ojsCrawler.enrich(raw);
+                        if (!yearPasses(enriched.year())) continue;
+                        if (catalog != null && !"ALL".equalsIgnoreCase(activeSintaRank)) {
+                            String sRank = catalog.resolveSintaRank(enriched.url(), enriched.journal());
+                            if (!JournalCatalog.matchesSinta(sRank, activeSintaRank)) continue;
+                        }
+                        if (!articleExists(ojsArticlePool, enriched)) {
+                            ojsArticlePool.add(enriched);
+                        }
+                    }
+                }
+                ojsExhausted = ojsIssuesScanned >= ojsIssueQueue.size();
+                totalRecordsFound = ojsArticlePool.size();
+                totalSearchPages = Math.max(page,
+                        Math.max(1, (int) Math.ceil((double) totalRecordsFound / activePageSize)));
+
+                int startIdx = (page - 1) * activePageSize;
+                int endIdx = Math.min(ojsArticlePool.size(), startIdx + activePageSize);
+                return startIdx < ojsArticlePool.size()
+                        ? new ArrayList<>(ojsArticlePool.subList(startIdx, endIdx))
+                        : new ArrayList<>();
+            }
+
+            @Override
+            protected void process(List<String> chunks) {
+                if (!chunks.isEmpty()) {
+                    tablePanel.setProgress(true, chunks.get(chunks.size() - 1));
+                }
+            }
+
+            @Override
+            protected void done() {
+                finishPageLoad(page, this);
+            }
+        };
+
+        currentSearchWorker.execute();
+    }
+
+    private boolean keywordMatches(String keyword, Article a) {
+        String kw = keyword.toLowerCase().strip();
+        if (kw.isEmpty()) return true;
+        return (a.title() != null && a.title().toLowerCase().contains(kw))
+                || (a.authors() != null && a.authors().toLowerCase().contains(kw));
+    }
+
+    private boolean yearPasses(String year) {
+        if (year == null || year.length() < 4) return true;
+        try {
+            int y = Integer.parseInt(year.substring(0, 4));
+            if (activeFromYear != null && y < activeFromYear) return false;
+            if (activeToYear != null && y > activeToYear) return false;
+            return true;
+        } catch (NumberFormatException ex) {
+            return true;
+        }
     }
 
     /**

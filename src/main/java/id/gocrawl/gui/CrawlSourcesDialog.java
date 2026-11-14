@@ -4,6 +4,7 @@ import id.gocrawl.CrawlSource;
 import id.gocrawl.CrawlSourceStore;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -195,20 +196,24 @@ public class CrawlSourcesDialog extends JDialog {
         String typedName = nameField.getText().strip();
         boolean nameBlank = typedName.isEmpty() || typedName.contains("|");
         String name = nameBlank ? hostOf(baseUrl) : typedName;
+        // Tebakan awal tipe: URL dengan path /index.php/ hampir pasti OJS
+        String guessedType = baseUrl.contains("/index.php/")
+                ? CrawlSource.TYPE_OJS : CrawlSource.TYPE_GARUDA;
 
-        CrawlSource added = new CrawlSource(name, baseUrl, true, false);
+        CrawlSource added = new CrawlSource(name, baseUrl, guessedType, true, false);
         sources.add(added);
         persist();
         renderRows();
         urlField.setText("");
         nameField.setText("");
 
+        // Nama & tipe diperkaya otomatis dari judul/meta portal di latar belakang
         if (nameBlank) {
             setStatus("Mengambil nama portal ...", STATUS_INFO);
-            detectNameAsync(added);
         } else {
-            setStatus("Sumber \"" + name + "\" ditambahkan.", STATUS_OK);
+            setStatus("Sumber ditambahkan — mendeteksi tipe portal ...", STATUS_INFO);
         }
+        detectPortalInfoAsync(added, nameBlank);
     }
 
     /** Uji koneksi ke URL pada kolom sumber: validasi + deteksi judul portal. */
@@ -224,20 +229,20 @@ public class CrawlSourcesDialog extends JDialog {
 
         testBtn.setEnabled(false);
         setStatus("Menguji koneksi ke " + cleanUrl + " ...", STATUS_INFO);
-        new SwingWorker<String, Void>() {
+        new SwingWorker<String[], Void>() {
             @Override
-            protected String doInBackground() {
-                return fetchPortalTitle(cleanUrl);
+            protected String[] doInBackground() {
+                return fetchPortalInfo(cleanUrl);
             }
 
             @Override
             protected void done() {
                 testBtn.setEnabled(true);
                 try {
-                    String detected = get();
-                    if (detected != null) {
-                        setStatus("Terhubung — portal: " + detected, STATUS_OK);
-                        nameField.setText(detected.length() > 40 ? detected.substring(0, 40).strip() : detected);
+                    String[] info = get();
+                    if (info != null) {
+                        setStatus("Terhubung — portal: " + info[0] + "  (" + info[1] + ")", STATUS_OK);
+                        nameField.setText(info[0].length() > 40 ? info[0].substring(0, 40).strip() : info[0]);
                     } else {
                         setStatus("Gagal terhubung (portal offline / menolak akses).", STATUS_ERROR);
                     }
@@ -249,12 +254,12 @@ public class CrawlSourcesDialog extends JDialog {
     }
 
     /**
-     * Mengambil judul portal untuk validasi koneksi. Berlapis: coba dulu path
-     * pencarian gaya Garuda (/documents?q=...), bila tidak ada (portal OJS lain)
-     * jatuh ke URL dasarnya. Satu kali percobaan ulang setelah jeda 3 detik —
-     * portal kerap menolak akses (403) bila terlalu cepat. Null berarti gagal.
+     * Mengambil info portal untuk validasi koneksi: [judul, tipe]. Berlapis: coba
+     * dulu path pencarian gaya Garuda (/documents?q=...), bila tidak ada (portal
+     * OJS lain) jatuh ke URL dasarnya. Tipe dideteksi dari meta generator. Satu
+     * kali percobaan ulang setelah jeda 3 detik. Null berarti gagal.
      */
-    private String fetchPortalTitle(String baseUrl) {
+    private String[] fetchPortalInfo(String baseUrl) {
         String[] candidates = { baseUrl + "/documents?q=test", baseUrl };
         for (String url : candidates) {
             for (int attempt = 1; attempt <= 2; attempt++) {
@@ -268,7 +273,13 @@ public class CrawlSourcesDialog extends JDialog {
                     if (response.statusCode() == 200) {
                         Document doc = response.parse();
                         String title = doc.title();
-                        return title == null || title.isBlank() ? null : title.strip();
+                        Element generatorEl = doc.selectFirst("meta[name=generator]");
+                        String generator = generatorEl == null ? "" : generatorEl.attr("content").toLowerCase();
+                        String type = generator.contains("open journal systems")
+                                ? CrawlSource.TYPE_OJS : CrawlSource.TYPE_GARUDA;
+                        return new String[]{
+                                title == null || title.isBlank() ? "Sumber kustom" : title.strip(),
+                                type};
                     }
                 } catch (Exception ignored) {
                     // coba lagi pada percobaan berikutnya
@@ -285,29 +296,31 @@ public class CrawlSourcesDialog extends JDialog {
         return null;
     }
 
-    /** Melengkapi nama sumber dari judul portal secara otomatis (latar belakang). */
-    private void detectNameAsync(CrawlSource source) {
-        new SwingWorker<String, Void>() {
+    /** Melengkapi nama dan tipe sumber dari judul portal secara otomatis (latar belakang). */
+    private void detectPortalInfoAsync(CrawlSource source, boolean updateName) {
+        new SwingWorker<String[], Void>() {
             @Override
-            protected String doInBackground() {
-                return fetchPortalTitle(source.baseUrl());
+            protected String[] doInBackground() {
+                return fetchPortalInfo(source.baseUrl());
             }
 
             @Override
             protected void done() {
                 try {
-                    String detected = get();
+                    String[] info = get();
                     int idx = sources.indexOf(source);
                     if (idx < 0) return;
-                    if (detected != null) {
-                        String name = detected.length() > 40 ? detected.substring(0, 40).strip() : detected;
-                        sources.set(idx, new CrawlSource(name, source.baseUrl(), source.enabled(), source.builtin()));
-                        persist();
-                        renderRows();
-                        setStatus("Nama portal terdeteksi: " + name, STATUS_OK);
-                    } else {
-                        setStatus("Nama portal gagal diambil — host URL dipakai.", STATUS_ERROR);
+                    if (info == null) {
+                        setStatus("Deteksi portal gagal — host URL & tipe Garuda dipakai.", STATUS_ERROR);
+                        return;
                     }
+                    String name = updateName
+                            ? (info[0].length() > 40 ? info[0].substring(0, 40).strip() : info[0])
+                            : source.name();
+                    sources.set(idx, new CrawlSource(name, source.baseUrl(), info[1], source.enabled(), source.builtin()));
+                    persist();
+                    renderRows();
+                    setStatus("Portal terdeteksi: " + info[0] + "  (" + info[1] + ")", STATUS_OK);
                 } catch (Exception ignored) {}
             }
         }.execute();
@@ -316,7 +329,7 @@ public class CrawlSourcesDialog extends JDialog {
     private void updateSource(CrawlSource source, boolean enabled) {
         int idx = sources.indexOf(source);
         if (idx >= 0) {
-            sources.set(idx, new CrawlSource(source.name(), source.baseUrl(), enabled, source.builtin()));
+            sources.set(idx, new CrawlSource(source.name(), source.baseUrl(), source.type(), enabled, source.builtin()));
         }
         persist();
     }

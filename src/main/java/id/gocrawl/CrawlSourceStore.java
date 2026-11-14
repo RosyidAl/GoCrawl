@@ -10,8 +10,9 @@ import java.util.List;
 
 /**
  * Penyimpanan daftar sumber crawl di data/crawl_sources.txt.
- * Format per baris: enabled|builtin|nama|baseUrl (dipisah pipe — sengaja bukan JSON
- * agar parsingnya scanner karakter sederhana, aman dari rekursi regex).
+ * Format per baris: enabled|builtin|type|nama|baseUrl (dipisah pipe — sengaja bukan
+ * JSON agar parsingnya scanner sederhana, aman dari rekursi regex).
+ * Baris lama 4 kolom (tanpa type) tetap terbaca → type = garuda.
  */
 public final class CrawlSourceStore {
 
@@ -32,7 +33,7 @@ public final class CrawlSourceStore {
             }
         }
         if (sources.isEmpty()) {
-            sources.add(new CrawlSource("Garuda", DEFAULT_GARUDA_URL, true, true));
+            sources.add(new CrawlSource("Garuda", DEFAULT_GARUDA_URL, CrawlSource.TYPE_GARUDA, true, true));
         }
         return sources;
     }
@@ -40,14 +41,26 @@ public final class CrawlSourceStore {
     private static CrawlSource parseLine(String line) {
         if (line == null || line.isBlank() || line.startsWith("#")) return null;
         String[] parts = line.split("\\|", -1);
-        if (parts.length < 4) return null;
         try {
-            String name = unescape(parts[2]).strip();
-            String baseUrl = unescape(parts[3]).strip();
-            if (name.isEmpty() || baseUrl.isEmpty()) return null;
-            return new CrawlSource(name, baseUrl,
-                    Boolean.parseBoolean(parts[0].strip()),
-                    Boolean.parseBoolean(parts[1].strip()));
+            if (parts.length >= 5) {
+                String name = unescape(parts[3]).strip();
+                String baseUrl = unescape(parts[4]).strip();
+                String type = parts[2].strip().isEmpty() ? CrawlSource.TYPE_GARUDA : parts[2].strip();
+                if (name.isEmpty() || baseUrl.isEmpty()) return null;
+                return new CrawlSource(name, baseUrl, type,
+                        Boolean.parseBoolean(parts[0].strip()),
+                        Boolean.parseBoolean(parts[1].strip()));
+            }
+            // Format lama 4 kolom: enabled|builtin|nama|baseUrl
+            if (parts.length == 4) {
+                String name = unescape(parts[2]).strip();
+                String baseUrl = unescape(parts[3]).strip();
+                if (name.isEmpty() || baseUrl.isEmpty()) return null;
+                return new CrawlSource(name, baseUrl, CrawlSource.TYPE_GARUDA,
+                        Boolean.parseBoolean(parts[0].strip()),
+                        Boolean.parseBoolean(parts[1].strip()));
+            }
+            return null;
         } catch (Exception ex) {
             return null;
         }
@@ -59,6 +72,7 @@ public final class CrawlSourceStore {
             for (CrawlSource source : sources) {
                 w.write(Boolean.toString(source.enabled()) + "|"
                         + Boolean.toString(source.builtin()) + "|"
+                        + source.type() + "|"
                         + escape(source.name()) + "|"
                         + escape(source.baseUrl()));
                 w.write("\n");
