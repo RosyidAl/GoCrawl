@@ -414,6 +414,47 @@ public final class GarudaSearchEngine {
             }
         }
 
+        // 4. Hilangkan fragmen awal pendek yang berulang di sisa judul
+        //    (mis. "Urgensi Teknologi URGENSI TEKNOLOGI DALAM ..." → "URGENSI TEKNOLOGI DALAM ...")
+        String[] words = s.split("\\s+");
+        for (int take = Math.min(4, words.length - 1); take >= 1; take--) {
+            String fragment = String.join(" ", Arrays.copyOfRange(words, 0, take)).strip();
+            String rest = String.join(" ", Arrays.copyOfRange(words, take, words.length)).strip();
+            if (rest.length() > fragment.length() * 2
+                    && rest.toLowerCase(Locale.ROOT).startsWith(fragment.toLowerCase(Locale.ROOT))) {
+                s = rest;
+                break;
+            }
+        }
+
+        // 5. Deduplikasi segmen setelah ':' yang berulang
+        //    (mis. ": Pemanfaatan X, Urgensi Pemanfaatan X" → ": Pemanfaatan X")
+        int subtitleIdx = s.indexOf(": ");
+        if (subtitleIdx > 0 && subtitleIdx < s.length() - 2) {
+            String head = s.substring(0, subtitleIdx).strip();
+            String tail = s.substring(subtitleIdx + 2).strip();
+            String[] segments = tail.split(",\\s*");
+            List<String> kept = new ArrayList<>();
+            boolean removed = false;
+            for (String segment : segments) {
+                String norm = segment.toLowerCase(Locale.ROOT).replaceFirst("^urgensi\\s+", "").strip();
+                boolean dup = kept.stream().anyMatch(k -> {
+                    String knorm = k.toLowerCase(Locale.ROOT).replaceFirst("^urgensi\\s+", "").strip();
+                    return knorm.equalsIgnoreCase(norm)
+                            || (knorm.length() >= 10 && norm.startsWith(knorm))
+                            || (norm.length() >= 10 && knorm.startsWith(norm));
+                });
+                if (dup) {
+                    removed = true;
+                } else {
+                    kept.add(segment);
+                }
+            }
+            if (removed && !kept.isEmpty()) {
+                s = head + ": " + String.join(", ", kept);
+            }
+        }
+
         return TextSanitizer.cleanTitle(s);
     }
 }

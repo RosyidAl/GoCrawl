@@ -61,6 +61,7 @@ public class GoCrawlGui extends JFrame {
     private final JTextField advancedAuthorField = new JTextField();
     private final JTextField advancedAffiliationField = new JTextField();
     private JPanel advancedSearchPanel;
+    private JButton advancedSearchButton;
     private JLayeredPane contentLayer;
     private JPanel searchControls;
     private JPanel headerToolbar;
@@ -207,7 +208,7 @@ public class GoCrawlGui extends JFrame {
 
         advancedSearchPanel = createAdvancedSearchPanel();
         advancedSearchPanel.setVisible(false);
-        JButton advancedSearchButton = new JButton("Pencarian Lanjutan ▾");
+        advancedSearchButton = new JButton("Pencarian Lanjutan ▾");
         advancedSearchButton.putClientProperty("JButton.buttonType", "toolBarButton");
         advancedSearchButton.addActionListener(e -> toggleAdvancedSearch(advancedSearchButton));
 
@@ -642,7 +643,7 @@ public class GoCrawlGui extends JFrame {
     }
 
     private void layoutContentLayer() {
-        int headerHeight = headerToolbar.getPreferredSize().height;
+        int headerHeight = headerToolbar.isVisible() ? headerToolbar.getPreferredSize().height : 0;
         boolean filterOpen = advancedSearchPanel.isVisible();
         int filterHeight = filterOpen ? advancedSearchPanel.getPreferredSize().height : 0;
         int contentLeft = sidebar.isVisible() ? SIDEBAR_WIDTH + 5 : 14 + sidebarToggleBtn.getPreferredSize().width + 4;
@@ -675,7 +676,9 @@ public class GoCrawlGui extends JFrame {
         mainSplit.setBounds(contentLeft, contentTop,
                 Math.max(0, contentLayer.getWidth() - contentLeft),
                 Math.max(0, contentLayer.getHeight() - contentTop));
-        updateSearchControlsWidth();
+        if (headerToolbar.isVisible()) {
+            updateSearchControlsWidth();
+        }
     }
 
     /** Menghitung lebar bar pencarian: dari tepi kiri wrapper hingga margin kanan header (mentok kanan). */
@@ -778,8 +781,10 @@ public class GoCrawlGui extends JFrame {
         tablePanel.clearArticles();
         showArticleInInspector(null); // sembunyikan inspector saat pencarian baru
 
-        // Mulai crawl = view kembali ke Hasil Pencarian
+        // Mulai crawl = view kembali ke Hasil Pencarian (bar pencarian muncul kembali)
         activeView = SidebarView.SEARCH_RESULTS;
+        headerToolbar.setVisible(true);
+        headerToolbar.revalidate();
         refreshNavHighlight();
         refreshKoleksiList();
 
@@ -1040,15 +1045,25 @@ public class GoCrawlGui extends JFrame {
     private void saveSearchOutput() {
         if (masterArticleList.isEmpty()) return;
         try {
-            // Auto-save masuk ke koleksi aktif agar konsep "koleksi artikel" terisi otomatis;
-            // default workspace tetap memakai folder output lama
+            // Auto-save masuk ke koleksi aktif; default workspace tetap memakai
+            // folder output lama. DIGABUNG (bukan ditimpa) agar koleksi tidak
+            // kehilangan artikel lamanya saat pencarian baru dijalankan.
             Path defaultWorkspace = Path.of(".").toAbsolutePath().normalize();
             Path outDir = activeProject.equals(defaultWorkspace)
                     ? Path.of("output", "garuda_search")
                     : activeProject;
             Files.createDirectories(outDir);
-            ArticleStorage.saveJson(outDir.resolve("articles.json"), masterArticleList);
+            Path json = outDir.resolve("articles.json");
+            List<Article> merged = new ArrayList<>();
+            if (Files.exists(json)) {
+                merged.addAll(ArticleStorage.parseJson(Files.readString(json, StandardCharsets.UTF_8)));
+            }
+            for (Article a : masterArticleList) {
+                if (!articleExists(merged, a)) merged.add(a);
+            }
+            ArticleStorage.saveJson(json, merged);
             koleksiCountCache.clear();
+            refreshKoleksiList();
         } catch (Exception ignored) {}
     }
 
@@ -1069,6 +1084,10 @@ public class GoCrawlGui extends JFrame {
         activeView = SidebarView.SEARCH_RESULTS;
         refreshNavHighlight();
         refreshKoleksiList();
+        // View hasil pencarian membutuhkan bar pencarian kembali
+        headerToolbar.setVisible(true);
+        headerToolbar.revalidate();
+        layoutContentLayer();
         if (pageCache.containsKey(currentSearchPage)) {
             List<Article> cached = pageCache.get(currentSearchPage);
             tablePanel.setArticles(cached);
@@ -1183,12 +1202,18 @@ public class GoCrawlGui extends JFrame {
         activeView = SidebarView.COLLECTION;
         setActiveProject(path);
         refreshNavHighlight();
+        // Browsing koleksi tidak memerlukan bar pencarian — sembunyikan agar bersih
+        headerToolbar.setVisible(false);
+        if (advancedSearchPanel.isVisible()) {
+            toggleAdvancedSearch(advancedSearchButton);
+        }
         List<Article> saved = ArticleStorage.scanWorkspace(path);
         tablePanel.setArticles(saved);
         tablePanel.updatePagination(1, 1, saved.size(), saved.size());
         tablePanel.setProgress(false, saved.isEmpty()
                 ? "Koleksi \"" + collectionDisplayName(path) + "\" masih kosong."
                 : "");
+        layoutContentLayer();
     }
 
     /** Deteksi duplikat artikel berdasarkan URL, DOI, atau judul. */
