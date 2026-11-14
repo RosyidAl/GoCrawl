@@ -6,8 +6,10 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.net.URI;
 import java.nio.file.Path;
@@ -22,10 +24,15 @@ import java.util.List;
  */
 public class CrawlSourcesDialog extends JDialog {
 
+    private static final Color ACCENT_BLUE = new Color(0, 114, 188);
+    private static final Color ROW_SEPARATOR = new Color(236, 238, 242);
+    private static final int MAX_LIST_HEIGHT = 220;
+
     private final List<CrawlSource> sources;
     private final Path storeFile;
     private final Runnable onSourcesChanged;
     private JPanel rowsPanel;
+    private JScrollPane listScroll;
     private JTextField urlField;
     private JTextField nameField;
 
@@ -38,19 +45,28 @@ public class CrawlSourcesDialog extends JDialog {
     }
 
     private void initUI() {
-        setLayout(new BorderLayout(0, 10));
-        ((JPanel) getContentPane()).setBorder(new EmptyBorder(14, 16, 12, 16));
+        setLayout(new BorderLayout(0, 12));
+        ((JPanel) getContentPane()).setBorder(new EmptyBorder(16, 18, 14, 18));
 
-        // 1. Baris tambah cepat: URL + Nama (opsional) + tombol — tanpa jendela kedua
+        // 1. Petunjuk singkat
+        JLabel hint = new JLabel("Centang sumber yang dipakai saat crawl — pencarian memakai sumber aktif pertama.");
+        hint.setFont(hint.getFont().deriveFont(Font.ITALIC, 11f));
+        hint.setForeground(new Color(120, 120, 120));
+
+        // 2. Baris tambah cepat: URL + Nama (opsional) + tombol — tanpa jendela kedua
         urlField = new JTextField("https://");
         urlField.putClientProperty("JTextField.placeholderText", "https://portal.ac.id");
         nameField = new JTextField();
         nameField.putClientProperty("JTextField.placeholderText", "Nama (kosongkan = otomatis)");
 
         JButton addBtn = new JButton("＋ Tambah");
+        addBtn.setBackground(ACCENT_BLUE);
+        addBtn.setForeground(Color.WHITE);
+        addBtn.setFocusable(false);
         addBtn.addActionListener(e -> addSourceFromFields());
 
         JPanel fields = new JPanel(new GridBagLayout());
+        fields.setOpaque(false);
         GridBagConstraints gc = new GridBagConstraints();
         gc.gridy = 0;
         gc.fill = GridBagConstraints.HORIZONTAL;
@@ -68,28 +84,23 @@ public class CrawlSourcesDialog extends JDialog {
         addRow.add(fields, BorderLayout.CENTER);
         addRow.add(addBtn, BorderLayout.EAST);
 
-        // 2. Daftar sumber (checkbox aktif + hapus untuk kustom)
+        // 3. Daftar sumber (checkbox aktif + hapus untuk kustom)
         rowsPanel = new JPanel();
         rowsPanel.setOpaque(true);
         rowsPanel.setBackground(Color.WHITE);
         rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
-        rowsPanel.setBorder(new EmptyBorder(8, 12, 8, 12));
-        JScrollPane scroll = new JScrollPane(rowsPanel);
-        scroll.setPreferredSize(new Dimension(500, 150));
-        scroll.setBorder(new LineBorder(new Color(210, 214, 220), 1, true));
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        rowsPanel.setBorder(new EmptyBorder(4, 10, 4, 10));
+        listScroll = new JScrollPane(rowsPanel);
+        listScroll.setBorder(new LineBorder(new Color(210, 214, 220), 1, true));
+        listScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        listScroll.getVerticalScrollBar().setUnitIncrement(16);
 
-        // 3. Bagian atas: petunjuk + baris tambah
-        JLabel hint = new JLabel("Centang sumber yang dipakai saat crawl — pencarian memakai sumber aktif pertama.");
-        hint.setFont(hint.getFont().deriveFont(Font.ITALIC, 11f));
-        hint.setForeground(new Color(120, 120, 120));
-
-        JPanel top = new JPanel(new BorderLayout(0, 8));
+        JPanel top = new JPanel(new BorderLayout(0, 10));
         top.setOpaque(false);
         top.add(hint, BorderLayout.NORTH);
         top.add(addRow, BorderLayout.SOUTH);
         add(top, BorderLayout.NORTH);
-        add(scroll, BorderLayout.CENTER);
+        add(listScroll, BorderLayout.CENTER);
 
         JPanel bottom = new JPanel(new BorderLayout());
         JButton closeBtn = new JButton("Tutup");
@@ -100,7 +111,7 @@ public class CrawlSourcesDialog extends JDialog {
         bottom.add(closeWrap, BorderLayout.EAST);
         add(bottom, BorderLayout.SOUTH);
 
-        getRootPane().setDefaultButton(closeBtn);
+        getRootPane().setDefaultButton(addBtn); // Enter di kolom URL/Nama langsung menambahkan
 
         renderRows();
         pack();
@@ -115,24 +126,35 @@ public class CrawlSourcesDialog extends JDialog {
         }
         rowsPanel.revalidate();
         rowsPanel.repaint();
+        // Tinggi daftar mengikuti jumlah baris (dibatasi) agar tidak ada kotak kosong
+        int listHeight = Math.min(MAX_LIST_HEIGHT, rowsPanel.getPreferredSize().height + 6);
+        listScroll.setPreferredSize(new Dimension(520, listHeight));
+        listScroll.revalidate();
+        if (isDisplayable()) {
+            pack(); // dialog menyesuaikan ukurannya dengan isi
+            setLocationRelativeTo(getOwner());
+        }
     }
 
     private JPanel createSourceRow(CrawlSource source) {
-        JPanel row = new JPanel(new BorderLayout(6, 0));
+        JPanel row = new JPanel(new BorderLayout(8, 0));
         row.setOpaque(false);
-        row.setBorder(new EmptyBorder(6, 2, 6, 2));
+        row.setBorder(new CompoundBorder(
+                new EmptyBorder(7, 4, 7, 4),
+                new MatteBorder(0, 0, 1, 0, ROW_SEPARATOR)));
 
         JCheckBox checkbox = new JCheckBox(
                 source.name() + " — " + source.baseUrl() + (source.builtin() ? "   [bawaan]" : ""),
                 source.enabled());
         checkbox.setOpaque(false);
+        checkbox.setToolTipText(source.builtin() ? "Sumber bawaan" : "Klik untuk aktif/nonaktif");
         checkbox.addActionListener(e -> updateSource(source, checkbox.isSelected()));
         row.add(checkbox, BorderLayout.CENTER);
 
         if (!source.builtin()) {
             JButton deleteBtn = new JButton("Hapus");
             deleteBtn.setFont(deleteBtn.getFont().deriveFont(11f));
-            deleteBtn.setMargin(new Insets(2, 8, 2, 8));
+            deleteBtn.setMargin(new Insets(2, 10, 2, 10));
             deleteBtn.addActionListener(e -> {
                 int confirm = JOptionPane.showConfirmDialog(this,
                         "Hapus sumber \"" + source.name() + "\"?",
