@@ -1058,25 +1058,13 @@ public class GoCrawlGui extends JFrame {
     private void saveSearchOutput() {
         if (masterArticleList.isEmpty()) return;
         try {
-            // Auto-save masuk ke koleksi aktif; default workspace tetap memakai
-            // folder output lama. DIGABUNG (bukan ditimpa) agar koleksi tidak
-            // kehilangan artikel lamanya saat pencarian baru dijalankan.
-            Path defaultWorkspace = Path.of(".").toAbsolutePath().normalize();
-            Path outDir = activeProject.equals(defaultWorkspace)
-                    ? Path.of("output", "garuda_search")
-                    : activeProject;
+            // Hasil pencarian TIDAK PERNAH ditulis ke koleksi — koleksi hanya berisi
+            // artikel yang ditambahkan secara eksplisit (favorit / tambah ke koleksi).
+            // Default workspace menyimpan hasil crawl sementara di folder output lama.
+            Path outDir = Path.of("output", "garuda_search");
             Files.createDirectories(outDir);
-            Path json = outDir.resolve("articles.json");
-            List<Article> merged = new ArrayList<>();
-            if (Files.exists(json)) {
-                merged.addAll(ArticleStorage.parseJson(Files.readString(json, StandardCharsets.UTF_8)));
-            }
-            for (Article a : masterArticleList) {
-                if (!articleExists(merged, a)) merged.add(a);
-            }
-            ArticleStorage.saveJson(json, merged);
+            ArticleStorage.saveJson(outDir.resolve("articles.json"), masterArticleList);
             koleksiCountCache.clear();
-            refreshKoleksiList();
         } catch (Exception ignored) {}
     }
 
