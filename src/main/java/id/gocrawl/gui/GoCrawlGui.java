@@ -1,6 +1,8 @@
 package id.gocrawl.gui;
 
 import com.formdev.flatlaf.FlatLightLaf;
+import id.gocrawl.CrawlSource;
+import id.gocrawl.CrawlSourceStore;
 import id.gocrawl.*;
 
 import javax.swing.*;
@@ -91,7 +93,7 @@ public class GoCrawlGui extends JFrame {
     private final List<Article> sintaFilteredPool = Collections.synchronizedList(new ArrayList<>());
     private int sintaLastGarudaPageScanned = 0;
     private boolean sintaPoolExhausted = false;
-    private final GarudaSearchEngine searchEngine = new GarudaSearchEngine();
+    private List<CrawlSource> crawlSources;
 
     // State Paginasi Pencarian Garuda
     private int activePageSize = 25; // Default 25 baris untuk mengisi penuh ruang vertikal tabel
@@ -118,6 +120,7 @@ public class GoCrawlGui extends JFrame {
         } catch (Exception ex) {
             this.catalog = new JournalCatalog();
         }
+        this.crawlSources = CrawlSourceStore.load(Path.of("data", "crawl_sources.txt"));
     }
 
     private void initUI() {
@@ -130,9 +133,6 @@ public class GoCrawlGui extends JFrame {
         JMenuBar menuBar = new JMenuBar();
 
         JMenu fileMenu = new JMenu("File");
-        JMenuItem viewJournalsFileItem = new JMenuItem("Lihat Jurnal Terindeks...");
-        viewJournalsFileItem.addActionListener(e -> showIndexedJournals());
-
         JMenuItem addJournalItem = new JMenuItem("Tambah Jurnal Sumber...");
         addJournalItem.addActionListener(e -> new AddJournalDialog(this, () -> {
             initCatalog();
@@ -149,7 +149,6 @@ public class GoCrawlGui extends JFrame {
         JMenuItem exitItem = new JMenuItem("Keluar");
         exitItem.addActionListener(e -> System.exit(0));
 
-        fileMenu.add(viewJournalsFileItem);
         fileMenu.add(addJournalItem);
         fileMenu.add(saveResultsItem);
         fileMenu.add(openProjectFolderItem);
@@ -158,9 +157,10 @@ public class GoCrawlGui extends JFrame {
         menuBar.add(fileMenu);
 
         JMenu catalogMenu = new JMenu("Katalog");
-        JMenuItem viewJournalsItem = new JMenuItem("Lihat Jurnal Terindeks...");
-        viewJournalsItem.addActionListener(e -> showIndexedJournals());
-        catalogMenu.add(viewJournalsItem);
+        JMenuItem manageSourcesItem = new JMenuItem("Kelola Sumber Crawl...");
+        manageSourcesItem.addActionListener(e -> new CrawlSourcesDialog(this, crawlSources,
+                Path.of("data", "crawl_sources.txt"), null).setVisible(true));
+        catalogMenu.add(manageSourcesItem);
         menuBar.add(catalogMenu);
 
         setJMenuBar(menuBar);
@@ -740,13 +740,6 @@ public class GoCrawlGui extends JFrame {
         layoutContentLayer();
     }
 
-    private void showIndexedJournals() {
-        new IndexedJournalsDialog(this, catalog, () -> {
-            initCatalog();
-            if (tablePanel != null) tablePanel.repaint();
-        }).setVisible(true);
-    }
-
     private void handleCrawlToggle() {
         if (currentSearchWorker != null && !currentSearchWorker.isDone()) {
             currentSearchWorker.cancel(true);
@@ -849,6 +842,16 @@ public class GoCrawlGui extends JFrame {
             return;
         }
 
+        // Pilih sumber crawl aktif (checkbox centang pertama di Kelola Sumber Crawl)
+        CrawlSource source = crawlSources.stream().filter(CrawlSource::enabled).findFirst().orElse(null);
+        if (source == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Tidak ada sumber crawl yang aktif. Atur di Katalog > Kelola Sumber Crawl...",
+                    "Sumber Crawl", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        GarudaSearchEngine engine = new GarudaSearchEngine(source.baseUrl());
+
         crawlBtn.setText("■ Stop");
         crawlBtn.setBackground(SEARCH_BTN_RED);
         crawlBtn.setForeground(Color.WHITE);
@@ -883,7 +886,7 @@ public class GoCrawlGui extends JFrame {
                                     activeToYear,
                                     g
                             );
-                            GarudaSearchEngine.PageResult res = searchEngine.searchPage(opts, catalog);
+                            GarudaSearchEngine.PageResult res = engine.searchPage(opts, catalog);
                             garudaRawPageCache.put(g, res);
                             totalGarudaPages = Math.max(1, res.totalPages());
                             totalGarudaRecords = res.totalRecords();
@@ -941,7 +944,7 @@ public class GoCrawlGui extends JFrame {
                                     activeToYear,
                                     nextG
                             );
-                            res = searchEngine.searchPage(opts, catalog);
+                            res = engine.searchPage(opts, catalog);
                             garudaRawPageCache.put(nextG, res);
                         }
 

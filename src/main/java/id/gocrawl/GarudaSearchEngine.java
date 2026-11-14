@@ -32,7 +32,8 @@ import java.util.stream.Collectors;
  */
 public final class GarudaSearchEngine {
 
-    private static final String BASE_URL = "https://garuda.kemdiktisaintek.go.id";
+    public static final String DEFAULT_BASE_URL = "https://garuda.kemdiktisaintek.go.id";
+    private final String baseUrl;
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     private static final int TIMEOUT_SECONDS = 8;
 
@@ -51,10 +52,15 @@ public final class GarudaSearchEngine {
     private final HttpClient httpClient;
 
     public GarudaSearchEngine() {
-        this(createHttpClient());
+        this(DEFAULT_BASE_URL);
     }
 
-    public GarudaSearchEngine(HttpClient httpClient) {
+    public GarudaSearchEngine(String baseUrl) {
+        this(baseUrl, createHttpClient());
+    }
+
+    public GarudaSearchEngine(String baseUrl, HttpClient httpClient) {
+        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.httpClient = httpClient;
     }
 
@@ -115,7 +121,7 @@ public final class GarudaSearchEngine {
             return new PageResult(Collections.emptyList(), 0, 0, 0, false);
         }
 
-        StringBuilder urlBuilder = new StringBuilder(BASE_URL).append("/documents?q=")
+        StringBuilder urlBuilder = new StringBuilder(baseUrl).append("/documents?q=")
                 .append(URLEncoder.encode(options.keyword().strip(), StandardCharsets.UTF_8));
 
         if (options.fromYear() != null) {
@@ -168,7 +174,7 @@ public final class GarudaSearchEngine {
      * Melakukan parsing HTML halaman hasil pencarian Portal Garuda menjadi daftar objek Article.
      */
     public PageResult parseDocumentPage(String html, SearchOptions options, JournalCatalog catalog) {
-        Document doc = Jsoup.parse(html, BASE_URL);
+        Document doc = Jsoup.parse(html, baseUrl);
 
         int currentPage = options.page();
         int totalPages = 1;
@@ -258,7 +264,7 @@ public final class GarudaSearchEngine {
     /**
      * Mengekstrak satu elemen `.article-item` menjadi entitas Article lengkap.
      */
-    public static Article parseArticleItem(Element item, JournalCatalog catalog) {
+    public Article parseArticleItem(Element item, JournalCatalog catalog) {
         if (item == null) return null;
 
         // 1. Judul Artikel
@@ -312,7 +318,7 @@ public final class GarudaSearchEngine {
         } else if (titleEl != null && titleEl.hasAttr("href")) {
             String href = titleEl.attr("href").strip();
             if (href.startsWith("/")) {
-                url = BASE_URL + href;
+                url = baseUrl + href;
             } else {
                 url = href;
             }
