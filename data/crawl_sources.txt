@@ -1,0 +1,1 @@
+false|true|Garuda|https://garuda.kemdiktisaintek.go.id
