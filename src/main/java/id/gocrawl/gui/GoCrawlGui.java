@@ -429,9 +429,13 @@ public class GoCrawlGui extends JFrame {
         koleksiListPanel.removeAll();
             if (koleksiListExpanded) {
                 Path projectsRoot = Path.of("projects").toAbsolutePath().normalize();
+                Path favorites = favoritesPath();
                 List<Path> koleksiList = new ArrayList<>();
                 try (var stream = Files.list(projectsRoot)) {
-                    stream.filter(Files::isDirectory).map(Path::toAbsolutePath).sorted().forEach(koleksiList::add);
+                    // Favorit tidak masuk daftar koleksi — ia sudah menjadi item navigasi sendiri
+                    stream.filter(Files::isDirectory).map(Path::toAbsolutePath).sorted()
+                            .filter(p -> !p.equals(favorites))
+                            .forEach(koleksiList::add);
                 } catch (Exception ignored) {
                     // Folder projects/ belum ada — daftar tetap menampilkan koleksi aktif
                 }
