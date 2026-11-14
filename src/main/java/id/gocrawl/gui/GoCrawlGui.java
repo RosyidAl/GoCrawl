@@ -72,6 +72,7 @@ public class GoCrawlGui extends JFrame {
     private final Map<Integer, GarudaSearchEngine.PageResult> garudaRawPageCache = new ConcurrentHashMap<>();
     private final List<Article> sintaFilteredPool = Collections.synchronizedList(new ArrayList<>());
     private int sintaLastGarudaPageScanned = 0;
+    private boolean sintaPoolExhausted = false;
     private final GarudaSearchEngine searchEngine = new GarudaSearchEngine();
 
     // State Paginasi Pencarian Garuda
@@ -207,7 +208,9 @@ public class GoCrawlGui extends JFrame {
 
         // 3. Tata Letak Bersih 2-Panel (Tabel Artikel di Kiri/Tengah & Detail Inspector di Kanan)
         inspectorPanel = new DetailInspectorPanel(catalog);
-        tablePanel = new ArticleTablePanel(catalog, inspectorPanel::setArticle);
+        // Inspector disembunyikan di awal; muncul hanya saat artikel dipilih di tabel
+        inspectorPanel.setVisible(false);
+        tablePanel = new ArticleTablePanel(catalog, this::showArticleInInspector);
         tablePanel.setOnPageChange(this::loadPage);
         tablePanel.setOnPageSizeChange(newSize -> {
             if (newSize == activePageSize) return;
@@ -355,8 +358,8 @@ public class GoCrawlGui extends JFrame {
         return bar;
     }
 
-    /** Pasangan label kecil di atas field input (meniru gaya ScienceDirect). */
-    private JPanel createLabeledSearchField(String label, JTextField field) {
+    /** Pasangan label kecil di atas komponen input (meniru gaya ScienceDirect). */
+    private JPanel createLabeledSearchField(String label, JComponent field) {
         JPanel box = new JPanel(new BorderLayout(0, 2));
         box.setOpaque(false);
         JLabel heading = new JLabel(label);
@@ -372,18 +375,20 @@ public class GoCrawlGui extends JFrame {
 
     /** Baris filter lanjutan: satu baris kompak inline di bawah bar pencarian. */
     private JPanel createAdvancedSearchPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
         panel.setOpaque(false); // tanpa kotak putih pembungkus
 
-        panel.add(createInlineLabel("Afiliasi:"));
-        advancedAffiliationField.setColumns(24); // Field terlebar di baris filter
-        panel.add(advancedAffiliationField);
-        panel.add(createInlineLabel("Akreditasi:"));
-        panel.add(sintaComboBox);
-        panel.add(createInlineLabel("Rentang tahun:"));
-        panel.add(fromYearField);
-        panel.add(createInlineLabel("hingga"));
-        panel.add(toYearField);
+        advancedAffiliationField.setColumns(24);
+        panel.add(createLabeledSearchField("Afiliasi", advancedAffiliationField));
+        panel.add(createLabeledSearchField("Akreditasi", sintaComboBox));
+
+        // Pasangan tahun awal-akhir dibungkus satu grup berlabel "Rentang tahun"
+        JPanel yearRange = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        yearRange.setOpaque(false);
+        yearRange.add(fromYearField);
+        yearRange.add(createInlineLabel("hingga"));
+        yearRange.add(toYearField);
+        panel.add(createLabeledSearchField("Rentang tahun", yearRange));
 
         Font searchFont = keywordField.getFont();
         for (Component component : new Component[]{advancedAffiliationField, sintaComboBox, fromYearField, toYearField}) {
@@ -435,6 +440,19 @@ public class GoCrawlGui extends JFrame {
         if (width != pref.width) {
             searchControls.setPreferredSize(new Dimension(width, pref.height));
             searchControls.revalidate();
+        }
+    }
+
+    /** Inspector hanya muncul saat ada artikel yang dipilih di tabel. */
+    private void showArticleInInspector(Article article) {
+        inspectorPanel.setArticle(article);
+        boolean show = article != null;
+        inspectorPanel.setVisible(show);
+        mainSplit.setDividerSize(show ? 6 : 0);
+        if (show) {
+            // JSplitPane memberi seluruh ruang ke tabel saat inspector tidak visible;
+            // saat muncul kembali, kembalikan proporsi 68 : 32
+            mainSplit.setDividerLocation(0.68);
         }
     }
 
@@ -502,6 +520,7 @@ public class GoCrawlGui extends JFrame {
         this.totalGarudaPages = 1;
         this.totalGarudaRecords = 0;
         this.sintaLastGarudaPageScanned = 0;
+        this.sintaPoolExhausted = false;
         this.sintaFilteredPool.clear();
 
         // Reset cache dan tabel untuk pencarian baru
@@ -509,6 +528,7 @@ public class GoCrawlGui extends JFrame {
         pageCache.clear();
         masterArticleList.clear();
         tablePanel.clearArticles();
+        showArticleInInspector(null); // sembunyikan inspector saat pencarian baru
 
         loadPage(1);
     }
@@ -541,7 +561,8 @@ public class GoCrawlGui extends JFrame {
             List<Article> cached = pageCache.get(page);
             tablePanel.setArticles(cached);
             tablePanel.updatePagination(page, totalSearchPages, totalRecordsFound, cached.size());
-            tablePanel.setProgress(false, "Halaman " + page + " dari " + totalSearchPages + " — Menampilkan " + cached.size() + " artikel");
+            // Status dibiarkan kosong saat idle agar tidak menyingkirkan kontrol paginasi
+            tablePanel.setProgress(false, "");
             return;
         }
 
@@ -616,7 +637,7 @@ public class GoCrawlGui extends JFrame {
                     // Mode Filter SINTA: Pindai halaman Garuda secara dinamis hingga kuota per-halaman terpenuhi
                     int targetQuota = page * activePageSize;
 
-                    while (sintaFilteredPool.size() < targetQuota) {
+                    while (!sintaPoolExhausted && sintaFilteredPool.size() < targetQuota) {
                         if (isCancelled()) break;
                         int nextG = sintaLastGarudaPageScanned + 1;
                         if (totalGarudaPages > 1 && nextG > totalGarudaPages) {
@@ -646,14 +667,19 @@ public class GoCrawlGui extends JFrame {
                         totalGarudaRecords = res.totalRecords();
                         sintaFilteredPool.addAll(res.articles());
 
-                        if (!res.hasMore() || (res.articles().isEmpty() && nextG >= totalGarudaPages)) {
+                        if (!res.hasMore() || res.articles().isEmpty()) {
+                            // Hasil sesuai filter akreditasi sudah habis (walau halaman
+                            // mentah Garuda masih banyak) — hentikan pemindaian agar
+                            // paginasi tidak terkunci memindai ratusan halaman kosong
+                            sintaPoolExhausted = true;
                             break;
                         }
                     }
 
-                    if (sintaLastGarudaPageScanned >= totalGarudaPages) {
+                    if (sintaPoolExhausted || sintaLastGarudaPageScanned >= totalGarudaPages) {
                         totalRecordsFound = sintaFilteredPool.size();
-                        totalSearchPages = Math.max(1, (int) Math.ceil((double) totalRecordsFound / activePageSize));
+                        totalSearchPages = Math.max(page,
+                                Math.max(1, (int) Math.ceil((double) totalRecordsFound / activePageSize)));
                     } else {
                         double ratio = (double) sintaFilteredPool.size() / Math.max(1, sintaLastGarudaPageScanned * 10);
                         totalRecordsFound = Math.max(sintaFilteredPool.size(), (int) (totalGarudaRecords * ratio));
@@ -706,8 +732,9 @@ public class GoCrawlGui extends JFrame {
 
                     tablePanel.setArticles(articles);
                     tablePanel.updatePagination(currentSearchPage, totalSearchPages, totalRecordsFound, articles.size());
-                    tablePanel.setProgress(false, "Halaman " + currentSearchPage + " dari " + totalSearchPages +
-                            " — Menampilkan " + articles.size() + " artikel (Total: " + totalRecordsFound + " dokumen)");
+                    // Informasi halaman/total sudah ada di label kiri & indikator "1 / N";
+                    // status dibiarkan kosong agar kontrol paginasi tidak tertimpa teks panjang
+                    tablePanel.setProgress(false, "");
 
                     saveSearchOutput();
                 } catch (Exception e) {

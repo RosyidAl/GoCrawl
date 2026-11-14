@@ -26,12 +26,12 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Panel Tengah: Menampilkan tabel daftar artikel dengan kolom Asal / Penerbit Jurnal yang jelas,
+ * Panel Tengah: Menampilkan tabel daftar artikel dengan kolom Penerbit Jurnal yang jelas,
  * pencarian/penyaringan instan (real-time), bilah progres, serta tombol ekspor (CSV, JSON, BibTeX, RIS).
  */
 public class ArticleTablePanel extends JPanel {
 
-    private final String[] COLUMN_NAMES = {"Judul Artikel", "Jurnal", "Akreditasi", "Asal / Penerbit", "Penulis", "Tahun", "DOI"};
+    private final String[] COLUMN_NAMES = {"Judul Artikel", "Jurnal", "Akreditasi", "Penerbit", "Penulis", "Tahun", "DOI"};
     private final DefaultTableModel tableModel = new DefaultTableModel(COLUMN_NAMES, 0) {
         @Override
         public boolean isCellEditable(int row, int column) {
@@ -45,7 +45,7 @@ public class ArticleTablePanel extends JPanel {
     private final JLabel countLabel = new JLabel("Menampilkan: 0 artikel");
     private final JButton firstPageBtn = new JButton("«");
     private final JButton prevPageBtn = new JButton("‹");
-    private final JLabel pageInfoLabel = new JLabel("Halaman 1 / 1");
+    private final JLabel pageInfoLabel = new JLabel("1 / 1");
     private final JButton nextPageBtn = new JButton("›");
     private final JButton lastPageBtn = new JButton("»");
     private final JTextField jumpPageField = new JTextField(3);
@@ -103,7 +103,7 @@ public class ArticleTablePanel extends JPanel {
         table.getColumnModel().getColumn(0).setPreferredWidth(320); // Judul Artikel
         table.getColumnModel().getColumn(1).setPreferredWidth(160); // Jurnal
         table.getColumnModel().getColumn(2).setPreferredWidth(75);  // Akreditasi
-        table.getColumnModel().getColumn(3).setPreferredWidth(150); // Asal / Penerbit
+        table.getColumnModel().getColumn(3).setPreferredWidth(150); // Penerbit
         table.getColumnModel().getColumn(4).setPreferredWidth(120); // Penulis
         table.getColumnModel().getColumn(5).setPreferredWidth(55);  // Tahun
         table.getColumnModel().getColumn(6).setPreferredWidth(100); // DOI
@@ -367,13 +367,13 @@ public class ArticleTablePanel extends JPanel {
         this.totalRecords = totalRecs;
 
         SwingUtilities.invokeLater(() -> {
-            pageInfoLabel.setText("Halaman " + currentPage + " / " + totalPages);
+            pageInfoLabel.setText(currentPage + " / " + totalPages);
             firstPageBtn.setEnabled(currentPage > 1);
             prevPageBtn.setEnabled(currentPage > 1);
             nextPageBtn.setEnabled(currentPage < totalPages);
             lastPageBtn.setEnabled(currentPage < totalPages);
             jumpPageField.setText(String.valueOf(currentPage));
-            countLabel.setText("Hal " + currentPage + " (" + currentCount + " artikel) — Total: " + totalRecs + " dokumen");
+            countLabel.setText("Hal " + currentPage + " (" + currentCount + " artikel) — Total: " + totalRecs);
         });
     }
 

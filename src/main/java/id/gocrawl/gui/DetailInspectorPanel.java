@@ -18,6 +18,8 @@ import java.io.InputStream;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Panel Kanan (Inspector Detail ala Mendeley): Menampilkan detail metadata lengkap artikel,
@@ -48,6 +50,10 @@ public class DetailInspectorPanel extends JPanel {
     private final JournalCatalog catalog;
     private Article currentArticle;
 
+    // Kolom label metadata: dikunci ke lebar label terlebar agar tidak terpotong saat panel sempit
+    private final List<JLabel> metaFieldLabels = new ArrayList<>();
+    private int metaLabelColumnWidth = 0;
+
     public DetailInspectorPanel(JournalCatalog catalog) {
         this.catalog = catalog;
         initUI();
@@ -60,16 +66,7 @@ public class DetailInspectorPanel extends JPanel {
         setMinimumSize(new Dimension(320, 400));
         setPreferredSize(new Dimension(380, 650));
 
-        // 1. Header Atas
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBorder(new EmptyBorder(0, 2, 8, 4));
-        JLabel headerLabel = new JLabel("RINCIAN METADATA ARTIKEL");
-        headerLabel.setFont(headerLabel.getFont().deriveFont(Font.BOLD, 11f));
-        headerLabel.setForeground(new Color(110, 110, 110));
-        headerPanel.add(headerLabel, BorderLayout.WEST);
-        add(headerPanel, BorderLayout.NORTH);
-
-        // 2. Single Responsive Scrollable Content Container
+        // Konten scrollable responsif
         ResponsiveScrollPanel contentPanel = new ResponsiveScrollPanel();
 
         // Kartu Judul
@@ -98,61 +95,61 @@ public class DetailInspectorPanel extends JPanel {
         gbc.anchor = GridBagConstraints.NORTHWEST;
 
         // Asal / Penerbit
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Penerbit:"), gbc);
         originLabel.setFont(originLabel.getFont().deriveFont(Font.BOLD));
         originLabel.setForeground(new Color(30, 80, 180));
-        gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(originLabel, gbc);
 
         // Nama Jurnal
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Nama Jurnal:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(journalLabel, gbc);
 
         // Core Subject
-        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Core Subject:"), gbc);
         coreSubjectLabel.setForeground(new Color(30, 80, 160));
         coreSubjectLabel.setFont(coreSubjectLabel.getFont().deriveFont(Font.BOLD));
-        gbc.gridx = 1; gbc.gridy = 2; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 2; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(coreSubjectLabel, gbc);
 
         // Bidang / Subjek
-        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Bidang:"), gbc);
         subjectLabel.setForeground(new Color(60, 120, 60));
         subjectLabel.setFont(subjectLabel.getFont().deriveFont(Font.BOLD));
-        gbc.gridx = 1; gbc.gridy = 3; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 3; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(subjectLabel, gbc);
 
         // Akreditasi
-        gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Akreditasi:"), gbc);
         sintaLabel.setForeground(new Color(180, 80, 20));
         sintaLabel.setFont(sintaLabel.getFont().deriveFont(Font.BOLD));
-        gbc.gridx = 1; gbc.gridy = 4; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 4; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(sintaLabel, gbc);
 
         // Penulis
-        gbc.gridx = 0; gbc.gridy = 5; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 5; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Penulis:"), gbc);
         authorsArea.setEditable(false);
         authorsArea.setLineWrap(true);
         authorsArea.setWrapStyleWord(true);
         authorsArea.setBackground(metaBox.getBackground());
-        gbc.gridx = 1; gbc.gridy = 5; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 5; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(authorsArea, gbc);
 
         // Tahun
-        gbc.gridx = 0; gbc.gridy = 6; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 6; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Tahun:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 6; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 6; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(yearLabel, gbc);
 
         // DOI
-        gbc.gridx = 0; gbc.gridy = 7; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 7; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("DOI:"), gbc);
         doiLabel.setForeground(new Color(0, 102, 204));
         doiLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -164,11 +161,11 @@ public class DetailInspectorPanel extends JPanel {
                 }
             }
         });
-        gbc.gridx = 1; gbc.gridy = 7; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 7; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(doiLabel, gbc);
 
         // Tautan Web
-        gbc.gridx = 0; gbc.gridy = 8; gbc.weightx = 0.3; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 8; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Tautan OJS:"), gbc);
         urlLabel.setForeground(new Color(0, 102, 204));
         urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -180,11 +177,17 @@ public class DetailInspectorPanel extends JPanel {
                 }
             }
         });
-        gbc.gridx = 1; gbc.gridy = 8; gbc.weightx = 0.7; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 1; gbc.gridy = 8; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(urlLabel, gbc);
 
         contentPanel.add(metaBox);
         contentPanel.add(Box.createVerticalStrut(12));
+
+        // Kunci lebar minimum seluruh label ke label terlebar ("Nama Jurnal:") agar
+        // tidak terpotong ("N...") ketika panel kanan dalam kondisi sempit
+        for (JLabel label : metaFieldLabels) {
+            label.setMinimumSize(new Dimension(metaLabelColumnWidth + 4, label.getPreferredSize().height));
+        }
 
         // Bagian Abstrak
         JPanel abstractCard = new JPanel(new BorderLayout(0, 6));
@@ -454,6 +457,8 @@ public class DetailInspectorPanel extends JPanel {
         JLabel label = new JLabel(text);
         label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
         label.setForeground(new Color(110, 110, 110));
+        metaFieldLabels.add(label);
+        metaLabelColumnWidth = Math.max(metaLabelColumnWidth, label.getPreferredSize().width);
         return label;
     }
 

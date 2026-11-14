@@ -36,6 +36,14 @@ public final class GarudaSearchEngine {
     private static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
     private static final int TIMEOUT_SECONDS = 8;
 
+    // Garuda memblokir akses (HTTP 403) bila diminta beruntun terlalu cepat:
+    // beri jeda minimum antar-request dan ulangi dengan backoff saat kena pembatasan
+    private static final long MIN_REQUEST_SPACING_MILLIS = 1200;
+    private static final int MAX_FETCH_ATTEMPTS = 3;
+    private static final long RETRY_BACKOFF_MILLIS = 4000;
+
+    private long lastRequestMillis = 0;
+
     private static final Pattern YEAR_PATTERN = Pattern.compile("\\b(19\\d\\d|20\\d\\d)\\b");
     private static final Pattern DOI_PATTERN = Pattern.compile("10\\.\\d{4,9}/[-._;()/:A-Za-z0-9]+");
     private static final Pattern PAGINATION_PATTERN = Pattern.compile("Page\\s+(\\d+)\\s+of\\s+(\\d+)\\s*\\|\\s*Total Record\\s*:\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
@@ -100,8 +108,9 @@ public final class GarudaSearchEngine {
 
     /**
      * Menjalankan kueri pencarian dokumen ke Portal Garuda untuk satu halaman tertentu.
+     * Diberi jeda minimum antar-request dan retry ber-backoff bila kena pembatasan (403/429/5xx).
      */
-    public PageResult searchPage(SearchOptions options, JournalCatalog catalog) throws IOException, InterruptedException {
+    public synchronized PageResult searchPage(SearchOptions options, JournalCatalog catalog) throws IOException, InterruptedException {
         if (options.keyword() == null || options.keyword().isBlank()) {
             return new PageResult(Collections.emptyList(), 0, 0, 0, false);
         }
@@ -128,12 +137,31 @@ public final class GarudaSearchEngine {
                 .GET()
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        if (response.statusCode() != 200) {
-            throw new IOException("HTTP " + response.statusCode() + " dari Portal Garuda: " + targetUrl);
+        long elapsed = System.currentTimeMillis() - lastRequestMillis;
+        if (elapsed < MIN_REQUEST_SPACING_MILLIS) {
+            Thread.sleep(MIN_REQUEST_SPACING_MILLIS - elapsed);
         }
 
-        return parseDocumentPage(response.body(), options, catalog);
+        IOException lastFailure = null;
+        for (int attempt = 1; attempt <= MAX_FETCH_ATTEMPTS; attempt++) {
+            lastRequestMillis = System.currentTimeMillis();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            int code = response.statusCode();
+            if (code == 200) {
+                return parseDocumentPage(response.body(), options, catalog);
+            }
+            lastFailure = new IOException("HTTP " + code + " dari Portal Garuda: " + targetUrl);
+            boolean retryable = code == 403 || code == 429 || code >= 500;
+            if (!retryable || attempt == MAX_FETCH_ATTEMPTS) {
+                if (code == 403) {
+                    throw new IOException("Garuda membatasi akses (HTTP 403) setelah "
+                            + MAX_FETCH_ATTEMPTS + " percobaan. Tunggu beberapa menit lalu coba lagi.");
+                }
+                throw lastFailure;
+            }
+            Thread.sleep(RETRY_BACKOFF_MILLIS * attempt); // 4s, 8s
+        }
+        throw lastFailure;
     }
 
     /**
