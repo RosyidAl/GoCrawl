@@ -505,6 +505,12 @@ public class GoCrawlGui extends JFrame {
     }
 
     private void showCollectionContextMenu(MouseEvent e, Path path, Component row) {
+        // Pengaman: Default workspace (root proyek) dan folder di luar projects/
+        // tidak boleh dihapus — menghapusnya berarti menghapus seluruh proyek
+        Path projectsRoot = Path.of("projects").toAbsolutePath().normalize();
+        if (!path.startsWith(projectsRoot) || path.equals(projectsRoot)) {
+            return;
+        }
         JPopupMenu menu = new JPopupMenu();
         JMenuItem deleteItem = new JMenuItem("Hapus Koleksi...");
         deleteItem.addActionListener(ev -> deleteCollection(path));
@@ -514,6 +520,9 @@ public class GoCrawlGui extends JFrame {
 
     /** Menghapus folder koleksi secara rekursif setelah konfirmasi pengguna. */
     private void deleteCollection(Path path) {
+        // Pengaman ganda: hanya koleksi di dalam projects/ yang boleh dihapus
+        Path projectsRoot = Path.of("projects").toAbsolutePath().normalize();
+        if (!path.startsWith(projectsRoot) || path.equals(projectsRoot)) return;
         int confirm = JOptionPane.showConfirmDialog(this,
                 "Hapus koleksi \"" + collectionDisplayName(path) + "\" beserta seluruh isinya?",
                 "Hapus Koleksi", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
