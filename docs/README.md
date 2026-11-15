@@ -36,11 +36,12 @@ lib/                            dependency lokal untuk build manual
 
 ## Menjalankan
 
-GUI default:
-
-```text
-java -jar gocrawl.jar
-```
+GUI Desktop (Windows):
+- Klik dua kali `buka-gocrawl.bat` (langsung membuka GUI) atau `run-gui.bat`.
+- Atau via terminal:
+  ```text
+  java -jar gocrawl.jar
+  ```
 
 CLI pencarian:
 
@@ -49,3 +50,12 @@ java -jar gocrawl.jar --keyword "pendidikan karakter" --from-year 2021 --to-year
 ```
 
 Gunakan `--help` untuk daftar opsi lengkap.
+
+## Berbagi ke Teman / Distribusi Pengguna
+
+Untuk membagikan GoCrawl ke pengguna akhir tanpa perlu menyertakan source code, cukup sertakan:
+- `gocrawl.jar`
+- `buka-gocrawl.bat`
+- Folder `data/` (`crawl_sources.txt`, `journals_master.json`, `sinta_cache.json`)
+
+*Prasyarat*: Komputer pengguna harus sudah terpasang **Java 21** atau versi lebih baru.
