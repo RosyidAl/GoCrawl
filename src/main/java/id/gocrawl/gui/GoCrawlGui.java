@@ -66,7 +66,6 @@ public class GoCrawlGui extends JFrame {
     private DefaultListModel<Path> collectionModel;
     private JList<Path> collectionList;
     private JLabel emptyCollectionsLabel;
-    private boolean koleksiListExpanded = true;
     private boolean updatingCollectionList;
     private final WorkspaceController workspace = new WorkspaceController();
 
@@ -122,11 +121,6 @@ public class GoCrawlGui extends JFrame {
                         tablePanel.updatePagination(page.page(), page.totalPages(),
                                 page.totalRecords(), page.articles().size());
                         tablePanel.setProgress(false, "");
-                        try {
-                            workspace.saveSearchOutput(searchController.accumulatedArticles());
-                        } catch (Exception ignored) {
-                            // Auto-save bersifat best effort; hasil tetap tampil di tabel.
-                        }
                     }
 
                     @Override
@@ -310,21 +304,12 @@ public class GoCrawlGui extends JFrame {
 
         JPanel koleksiHeader = new JPanel(new BorderLayout(2, 0));
         koleksiHeader.setOpaque(false);
-        BasicArrowButton expandBtn = new BasicArrowButton(
-                koleksiListExpanded ? SwingConstants.SOUTH : SwingConstants.EAST);
-        flatIconButton(expandBtn, "Lipat / bentangkan daftar koleksi");
-        expandBtn.addActionListener(e -> {
-            koleksiListExpanded = !koleksiListExpanded;
-            expandBtn.setDirection(koleksiListExpanded ? SwingConstants.SOUTH : SwingConstants.EAST);
-            refreshKoleksiList();
-        });
         JLabel koleksiTitle = new JLabel("Koleksi");
         koleksiTitle.setFont(koleksiTitle.getFont().deriveFont(Font.BOLD, 13f));
         koleksiTitle.setForeground(new Color(60, 60, 60));
         JButton addBtn = new JButton("+");
         flatIconButton(addBtn, "Buat koleksi baru");
         addBtn.addActionListener(e -> createProjectFolder());
-        koleksiHeader.add(expandBtn, BorderLayout.WEST);
         koleksiHeader.add(koleksiTitle, BorderLayout.CENTER);
         koleksiHeader.add(addBtn, BorderLayout.EAST);
         koleksiSection.add(koleksiHeader, BorderLayout.NORTH);
@@ -445,12 +430,11 @@ public class GoCrawlGui extends JFrame {
         try {
             collectionModel.clear();
             List<Path> collections = workspace.sidebarCollections();
-            Path defaultWorkspace = workspace.defaultWorkspace();
-            boolean empty = collections.isEmpty()
-                    || (collections.size() == 1 && collections.contains(defaultWorkspace));
-            emptyCollectionsLabel.setVisible(koleksiListExpanded && empty);
-            collectionList.setVisible(koleksiListExpanded && !empty);
-            if (koleksiListExpanded && !empty) {
+            collections.removeIf(path -> path.equals(workspace.defaultWorkspace()));
+            boolean empty = collections.isEmpty();
+            emptyCollectionsLabel.setVisible(empty);
+            collectionList.setVisible(!empty);
+            if (!empty) {
                 collections.forEach(collectionModel::addElement);
                 if (activeView == SidebarView.COLLECTION) {
                     collectionList.setSelectedValue(workspace.activeProject(), true);
