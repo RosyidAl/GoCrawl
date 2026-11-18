@@ -30,12 +30,6 @@ Mesin pencarian Portal Garuda pada endpoint `/documents`.
 
 `parseDocumentPage` dapat digunakan langsung pada HTML fixture tanpa melakukan HTTP, sehingga cocok untuk pengujian parser.
 
-## `GarudaHarvester`
-
-Pemanen katalog jurnal dari direktori `/area/index/<subjectId>` Portal Garuda.
-
-`HarvestOptions` menentukan subjek, mode seluruh subjek, batas per subjek, dan file keluaran. Harvester mengambil baris jurnal, membuka halaman detail, mengekstrak penerbit, ISSN/eISSN, OJS, OAI, core subject, dan multi-subject, lalu menyimpan progres katalog setelah setiap subjek.
-
 ## `MetadataExtractor`
 
 Ekstraktor fallback untuk halaman OJS. Urutan ekstraksi memprioritaskan meta tag akademik Highwire/Dublin Core/OpenGraph, lalu selector DOM OJS modern, lalu fallback judul dokumen atau nama jurnal yang diberikan.
@@ -59,6 +53,8 @@ Resolver menggunakan nama jurnal yang dinormalisasi sebagai cache key. Urutannya
 3. Cocokkan nama jurnal dan ekstrak peringkat, penerbit, URL OJS, serta ID Garuda.
 4. Simpan hasil atau marker negatif ke `data/sinta_cache.json`.
 
-## `Main.OjsCrawler`
+## `OjsCrawler`
 
-Mode direct OJS membaca URL dari `journal.txt`, mengambil halaman dan tautan artikel, memvalidasi URL melalui `UrlFilter`, mengambil HTML artikel, mengekstrak metadata, menjalankan quality gate/deduplikasi, lalu menulis JSON/CSV per jurnal.
+Crawler ini dipakai GUI untuk sumber jurnal OJS kustom. Crawler membaca arsip edisi,
+mem-parsing daftar artikel, lalu memperkaya metadata dari halaman artikel seperti DOI,
+tahun, penulis, abstrak, dan kata kunci.

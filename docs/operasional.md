@@ -1,15 +1,9 @@
-# Operasional, CLI, dan data
+# Operasional, GUI, dan data
 
-## Mode CLI `Main`
+## Launcher desktop
 
-| Mode | Opsi utama | Keluaran |
-|---|---|---|
-| Pencarian Portal Garuda | `--keyword`, `--area/--field`, `--min-sinta`, `--from-year`, `--to-year`, `--limit`, `--output` | `articles.csv`, `articles.json` |
-| Panen katalog | `--harvest-catalog`, `--area`, `--all`, `--limit`, `--output` | `journals_master.json` |
-| Daftar subjek | `--list-fields` | daftar 40 subjek di terminal |
-| Direct OJS | `--direct-ojs`, `journal.txt`, opsi filter | folder per jurnal berisi artikel |
-
-Jika tidak ada argumen, aplikasi membuka GUI. `--help` menampilkan penggunaan dan opsi.
+`id.gocrawl.Main` hanya bertugas membuka GUI Swing. Jalankan `java -jar gocrawl.jar`
+atau gunakan `--gui` sebagai alias eksplisit.
 
 ## Berkas data
 
@@ -17,13 +11,11 @@ Jika tidak ada argumen, aplikasi membuka GUI. `--help` menampilkan penggunaan da
 |---|---|
 | `data/journals_master.json` | registry jurnal yang dipakai GUI dan filter SINTA |
 | `data/sinta_cache.json` | cache lookup SINTA positif maupun negatif |
-| `journal.txt` | daftar URL jurnal untuk direct OJS, satu URL per baris; baris `#` diabaikan |
-| `output/` | artikel hasil pencarian/crawl dan ekspor |
 | `projects/` | folder proyek yang dibuat dari sidebar GUI |
 
 ## Format keluaran
 
-`ArticleStorage.saveJson` menulis array JSON dengan field `title`, `authors`, `year`, `journal`, `url`, `abstract`, `doi`, `published`, dan `keywords`. CSV CLI memuat kolom metadata utama. `CitationExporter` menghasilkan BibTeX dan RIS untuk Mendeley, Zotero, dan EndNote.
+`ArticleStorage.saveJson` menulis array JSON dengan field `title`, `authors`, `year`, `journal`, `url`, `abstract`, `doi`, `published`, dan `keywords`. GUI menyediakan ekspor CSV, JSON, BibTeX, dan RIS melalui tabel artikel. `CitationExporter` menghasilkan BibTeX dan RIS untuk Mendeley, Zotero, dan EndNote.
 
 ## Dependency dan build
 
