@@ -6,6 +6,7 @@ import id.gocrawl.CrawlSourceStore;
 import id.gocrawl.*;
 
 import javax.swing.*;
+import javax.swing.plaf.basic.BasicArrowButton;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
@@ -50,7 +51,7 @@ public class GoCrawlGui extends JFrame {
     private final JComboBox<SintaFilterItem> sintaComboBox = new JComboBox<>();
     private final JTextField fromYearField = new JTextField("2021", 5);
     private final JTextField toYearField = new JTextField("2026", 5);
-    private final JButton crawlBtn = new JButton("ðŸ” Cari");
+    private final JButton crawlBtn = new JButton("Cari");
     private final JTextField advancedJournalField = new JTextField();
     private final JTextField advancedAuthorField = new JTextField();
     private final JTextField advancedAffiliationField = new JTextField();
@@ -65,7 +66,6 @@ public class GoCrawlGui extends JFrame {
     private DefaultListModel<Path> collectionModel;
     private JList<Path> collectionList;
     private JLabel emptyCollectionsLabel;
-    private boolean koleksiListExpanded = true;
     private boolean updatingCollectionList;
     private final WorkspaceController workspace = new WorkspaceController();
 
@@ -121,11 +121,6 @@ public class GoCrawlGui extends JFrame {
                         tablePanel.updatePagination(page.page(), page.totalPages(),
                                 page.totalRecords(), page.articles().size());
                         tablePanel.setProgress(false, "");
-                        try {
-                            workspace.saveSearchOutput(searchController.accumulatedArticles());
-                        } catch (Exception ignored) {
-                            // Auto-save bersifat best effort; hasil tetap tampil di tabel.
-                        }
                     }
 
                     @Override
@@ -200,7 +195,7 @@ public class GoCrawlGui extends JFrame {
 
         brandBox = new JPanel(new BorderLayout());
         brandBox.setOpaque(false);
-        brandBox.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 1));
+        brandBox.setPreferredSize(new Dimension(0, 1));
         sidebarToggleBtn = new JButton("≡");
         flatIconButton(sidebarToggleBtn, "Tampilkan / sembunyikan sidebar");
         sidebarToggleBtn.setForeground(Color.WHITE);
@@ -222,7 +217,7 @@ public class GoCrawlGui extends JFrame {
 
         // Baris pencarian gaya "Find articles": tiga kolom input berlabel di atasnya,
         // tanpa kotak biru pembungkus, tombol Cari biru, dan tautan Pencarian Lanjutan
-        crawlBtn.setText("ðŸ” Cari");
+        crawlBtn.setText("Cari");
         crawlBtn.setFont(crawlBtn.getFont().deriveFont(Font.BOLD, 12f));
         crawlBtn.setBackground(SEARCH_BTN_BLUE);
         crawlBtn.setForeground(Color.WHITE);
@@ -274,9 +269,11 @@ public class GoCrawlGui extends JFrame {
         sidebar = createSidebar();
 
         JPanel content = new JPanel(new BorderLayout());
-        content.add(headerToolbar, BorderLayout.NORTH);
+        JPanel resultsArea = new JPanel(new BorderLayout());
+        resultsArea.add(headerToolbar, BorderLayout.NORTH);
+        resultsArea.add(mainSplit, BorderLayout.CENTER);
         content.add(sidebar, BorderLayout.WEST);
-        content.add(mainSplit, BorderLayout.CENTER);
+        content.add(resultsArea, BorderLayout.CENTER);
         add(content, BorderLayout.CENTER);
 
         // Pesan Awal
@@ -307,20 +304,12 @@ public class GoCrawlGui extends JFrame {
 
         JPanel koleksiHeader = new JPanel(new BorderLayout(2, 0));
         koleksiHeader.setOpaque(false);
-        JButton expandBtn = new JButton(koleksiListExpanded ? "v" : ">");
-        flatIconButton(expandBtn, "Lipat / bentangkan daftar koleksi");
-        expandBtn.addActionListener(e -> {
-            koleksiListExpanded = !koleksiListExpanded;
-            expandBtn.setText(koleksiListExpanded ? "v" : ">");
-            refreshKoleksiList();
-        });
         JLabel koleksiTitle = new JLabel("Koleksi");
         koleksiTitle.setFont(koleksiTitle.getFont().deriveFont(Font.BOLD, 13f));
         koleksiTitle.setForeground(new Color(60, 60, 60));
         JButton addBtn = new JButton("+");
         flatIconButton(addBtn, "Buat koleksi baru");
         addBtn.addActionListener(e -> createProjectFolder());
-        koleksiHeader.add(expandBtn, BorderLayout.WEST);
         koleksiHeader.add(koleksiTitle, BorderLayout.CENTER);
         koleksiHeader.add(addBtn, BorderLayout.EAST);
         koleksiSection.add(koleksiHeader, BorderLayout.NORTH);
@@ -441,12 +430,11 @@ public class GoCrawlGui extends JFrame {
         try {
             collectionModel.clear();
             List<Path> collections = workspace.sidebarCollections();
-            Path defaultWorkspace = workspace.defaultWorkspace();
-            boolean empty = collections.isEmpty()
-                    || (collections.size() == 1 && collections.contains(defaultWorkspace));
-            emptyCollectionsLabel.setVisible(koleksiListExpanded && empty);
-            collectionList.setVisible(koleksiListExpanded && !empty);
-            if (koleksiListExpanded && !empty) {
+            collections.removeIf(path -> path.equals(workspace.defaultWorkspace()));
+            boolean empty = collections.isEmpty();
+            emptyCollectionsLabel.setVisible(empty);
+            collectionList.setVisible(!empty);
+            if (!empty) {
                 collections.forEach(collectionModel::addElement);
                 if (activeView == SidebarView.COLLECTION) {
                     collectionList.setSelectedValue(workspace.activeProject(), true);
@@ -679,7 +667,7 @@ public class GoCrawlGui extends JFrame {
     }
 
     private void setSearchRunning(boolean running, String status) {
-        crawlBtn.setText(running ? "■ Stop" : "🔍 Cari");
+        crawlBtn.setText(running ? "Stop" : "Cari");
         crawlBtn.setBackground(running ? SEARCH_BTN_RED : SEARCH_BTN_BLUE);
         crawlBtn.setForeground(Color.WHITE);
         tablePanel.setPaginationEnabled(!running);
