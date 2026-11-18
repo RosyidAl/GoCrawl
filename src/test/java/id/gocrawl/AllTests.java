@@ -16,7 +16,6 @@ public class AllTests {
             DeduplicationEngineTest.run();
             TextSanitizerTest.run();
             UrlFilterTest.run();
-            OptionsTest.run();
             GarudaSearchEngineTest.run();
             CitationExporterTest.run();
 

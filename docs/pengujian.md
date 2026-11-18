@@ -13,7 +13,6 @@
 | `QualityGateTest` | penerimaan/rejeksi metadata artikel |
 | `DeduplicationEngineTest` | deduplikasi berdasarkan identitas artikel |
 | `CitationExporterTest` | BibTeX dan RIS |
-| `OptionsTest` | parsing opsi CLI |
 | `TestSupport` | fixture dan assertion bersama |
 | `AllTests` | entry point untuk menjalankan seluruh test |
 
