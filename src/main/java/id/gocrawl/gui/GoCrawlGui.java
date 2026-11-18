@@ -6,6 +6,7 @@ import id.gocrawl.CrawlSourceStore;
 import id.gocrawl.*;
 
 import javax.swing.*;
+import javax.swing.plaf.basic.BasicArrowButton;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
@@ -50,7 +51,7 @@ public class GoCrawlGui extends JFrame {
     private final JComboBox<SintaFilterItem> sintaComboBox = new JComboBox<>();
     private final JTextField fromYearField = new JTextField("2021", 5);
     private final JTextField toYearField = new JTextField("2026", 5);
-    private final JButton crawlBtn = new JButton("ðŸ” Cari");
+    private final JButton crawlBtn = new JButton("Cari");
     private final JTextField advancedJournalField = new JTextField();
     private final JTextField advancedAuthorField = new JTextField();
     private final JTextField advancedAffiliationField = new JTextField();
@@ -200,7 +201,7 @@ public class GoCrawlGui extends JFrame {
 
         brandBox = new JPanel(new BorderLayout());
         brandBox.setOpaque(false);
-        brandBox.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 1));
+        brandBox.setPreferredSize(new Dimension(0, 1));
         sidebarToggleBtn = new JButton("≡");
         flatIconButton(sidebarToggleBtn, "Tampilkan / sembunyikan sidebar");
         sidebarToggleBtn.setForeground(Color.WHITE);
@@ -222,7 +223,7 @@ public class GoCrawlGui extends JFrame {
 
         // Baris pencarian gaya "Find articles": tiga kolom input berlabel di atasnya,
         // tanpa kotak biru pembungkus, tombol Cari biru, dan tautan Pencarian Lanjutan
-        crawlBtn.setText("ðŸ” Cari");
+        crawlBtn.setText("Cari");
         crawlBtn.setFont(crawlBtn.getFont().deriveFont(Font.BOLD, 12f));
         crawlBtn.setBackground(SEARCH_BTN_BLUE);
         crawlBtn.setForeground(Color.WHITE);
@@ -274,9 +275,11 @@ public class GoCrawlGui extends JFrame {
         sidebar = createSidebar();
 
         JPanel content = new JPanel(new BorderLayout());
-        content.add(headerToolbar, BorderLayout.NORTH);
+        JPanel resultsArea = new JPanel(new BorderLayout());
+        resultsArea.add(headerToolbar, BorderLayout.NORTH);
+        resultsArea.add(mainSplit, BorderLayout.CENTER);
         content.add(sidebar, BorderLayout.WEST);
-        content.add(mainSplit, BorderLayout.CENTER);
+        content.add(resultsArea, BorderLayout.CENTER);
         add(content, BorderLayout.CENTER);
 
         // Pesan Awal
@@ -307,11 +310,12 @@ public class GoCrawlGui extends JFrame {
 
         JPanel koleksiHeader = new JPanel(new BorderLayout(2, 0));
         koleksiHeader.setOpaque(false);
-        JButton expandBtn = new JButton(koleksiListExpanded ? "v" : ">");
+        BasicArrowButton expandBtn = new BasicArrowButton(
+                koleksiListExpanded ? SwingConstants.SOUTH : SwingConstants.EAST);
         flatIconButton(expandBtn, "Lipat / bentangkan daftar koleksi");
         expandBtn.addActionListener(e -> {
             koleksiListExpanded = !koleksiListExpanded;
-            expandBtn.setText(koleksiListExpanded ? "v" : ">");
+            expandBtn.setDirection(koleksiListExpanded ? SwingConstants.SOUTH : SwingConstants.EAST);
             refreshKoleksiList();
         });
         JLabel koleksiTitle = new JLabel("Koleksi");
@@ -679,7 +683,7 @@ public class GoCrawlGui extends JFrame {
     }
 
     private void setSearchRunning(boolean running, String status) {
-        crawlBtn.setText(running ? "■ Stop" : "🔍 Cari");
+        crawlBtn.setText(running ? "Stop" : "Cari");
         crawlBtn.setBackground(running ? SEARCH_BTN_RED : SEARCH_BTN_BLUE);
         crawlBtn.setForeground(Color.WHITE);
         tablePanel.setPaginationEnabled(!running);

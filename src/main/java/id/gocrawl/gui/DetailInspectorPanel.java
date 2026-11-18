@@ -142,7 +142,7 @@ public class DetailInspectorPanel extends JPanel {
                 new LineBorder(new Color(220, 220, 220), 1, true),
                 new EmptyBorder(10, 10, 10, 10)
         ));
-        JLabel absTitle = new JLabel("ABSTRAK LENGKAP");
+        JLabel absTitle = new JLabel("Abstrak");
         absTitle.setFont(absTitle.getFont().deriveFont(Font.BOLD, 11f));
         absTitle.setForeground(new Color(110, 110, 110));
         abstractCard.add(absTitle, BorderLayout.NORTH);
