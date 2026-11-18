@@ -16,6 +16,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * Dialog "Kelola Sumber Crawl": satu jendela untuk semuanya — baris tambah cepat
@@ -244,28 +245,20 @@ public class CrawlSourcesDialog extends JDialog {
 
         testBtn.setEnabled(false);
         setStatus("Menguji koneksi ke " + cleanUrl + " ...", STATUS_INFO);
-        new SwingWorker<String[], Void>() {
-            @Override
-            protected String[] doInBackground() {
-                return fetchPortalInfo(cleanUrl);
-            }
-
-            @Override
-            protected void done() {
-                testBtn.setEnabled(true);
-                try {
-                    String[] info = get();
-                    if (info != null) {
-                        setStatus("Terhubung — portal: " + info[0] + "  (" + info[1] + ")", STATUS_OK);
-                        nameField.setText(info[0].length() > 40 ? info[0].substring(0, 40).strip() : info[0]);
-                    } else {
+        probePortalAsync(cleanUrl,
+                info -> {
+                    testBtn.setEnabled(true);
+                    if (info == null) {
                         setStatus("Gagal terhubung (portal offline / menolak akses).", STATUS_ERROR);
+                    } else {
+                        setStatus("Terhubung — portal: " + info[0] + "  (" + info[1] + ")", STATUS_OK);
+                        nameField.setText(shortPortalName(info[0]));
                     }
-                } catch (Exception ex) {
+                },
+                ex -> {
+                    testBtn.setEnabled(true);
                     setStatus("Gagal terhubung: " + ex.getMessage(), STATUS_ERROR);
-                }
-            }
-        }.execute();
+                });
     }
 
     /**
@@ -313,32 +306,41 @@ public class CrawlSourcesDialog extends JDialog {
 
     /** Melengkapi nama dan tipe sumber dari judul portal secara otomatis (latar belakang). */
     private void detectPortalInfoAsync(CrawlSource source, boolean updateName) {
+        probePortalAsync(source.baseUrl(), info -> {
+            int idx = sources.indexOf(source);
+            if (idx < 0) return;
+            if (info == null) {
+                setStatus("Deteksi portal gagal — host URL & tipe Garuda dipakai.", STATUS_ERROR);
+                return;
+            }
+            String name = updateName ? shortPortalName(info[0]) : source.name();
+            sources.set(idx, new CrawlSource(name, source.baseUrl(), info[1], source.enabled(), source.builtin()));
+            persist();
+            renderRows();
+            setStatus("Portal terdeteksi: " + info[0] + "  (" + info[1] + ")", STATUS_OK);
+        }, ignored -> setStatus("Deteksi portal gagal — host URL & tipe Garuda dipakai.", STATUS_ERROR));
+    }
+
+    private void probePortalAsync(String baseUrl, Consumer<String[]> onSuccess, Consumer<Exception> onFailure) {
         new SwingWorker<String[], Void>() {
             @Override
             protected String[] doInBackground() {
-                return fetchPortalInfo(source.baseUrl());
+                return fetchPortalInfo(baseUrl);
             }
 
             @Override
             protected void done() {
                 try {
-                    String[] info = get();
-                    int idx = sources.indexOf(source);
-                    if (idx < 0) return;
-                    if (info == null) {
-                        setStatus("Deteksi portal gagal — host URL & tipe Garuda dipakai.", STATUS_ERROR);
-                        return;
-                    }
-                    String name = updateName
-                            ? (info[0].length() > 40 ? info[0].substring(0, 40).strip() : info[0])
-                            : source.name();
-                    sources.set(idx, new CrawlSource(name, source.baseUrl(), info[1], source.enabled(), source.builtin()));
-                    persist();
-                    renderRows();
-                    setStatus("Portal terdeteksi: " + info[0] + "  (" + info[1] + ")", STATUS_OK);
-                } catch (Exception ignored) {}
+                    onSuccess.accept(get());
+                } catch (Exception ex) {
+                    onFailure.accept(ex);
+                }
             }
         }.execute();
+    }
+
+    private static String shortPortalName(String name) {
+        return name.length() > 40 ? name.substring(0, 40).strip() : name;
     }
 
     private void updateSource(CrawlSource source, boolean enabled) {

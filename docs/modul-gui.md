@@ -36,7 +36,7 @@ Menampilkan hasil artikel dalam `JTable`. Fitur utama:
 
 ## `DetailInspectorPanel`
 
-Menampilkan metadata artikel terpilih dalam panel kanan bergulir. Informasi meliputi asal/penerbit, jurnal, subjek, SINTA, penulis, tahun, DOI, URL OJS, dan abstrak. Tersedia aksi membuka halaman web dan mengunduh PDF bila tautan tersedia.
+Menampilkan metadata artikel terpilih dalam panel kanan bergulir. Informasi meliputi asal/penerbit, jurnal, subjek, SINTA, penulis, tahun, DOI, URL OJS, dan abstrak. Tersedia aksi membuka halaman web artikel.
 
 ## Dialog pendukung
 

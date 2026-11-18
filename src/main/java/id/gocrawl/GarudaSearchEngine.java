@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * (garuda.kemdiktisaintek.go.id/documents).
  *
  * Mengambil metadata primer artikel (Judul, Penulis, Jurnal, Penerbit, Tahun, Abstrak,
- * Tautan Asal OJS, Tautan Unduh PDF langsung, dan DOI) secara terstruktur dan efisien.
+ * Tautan Asal OJS, DOI, dan metadata pendukung) secara terstruktur dan efisien.
  */
 public final class GarudaSearchEngine {
 
