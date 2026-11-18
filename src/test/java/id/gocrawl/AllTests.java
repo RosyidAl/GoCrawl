@@ -18,6 +18,9 @@ public class AllTests {
             UrlFilterTest.run();
             GarudaSearchEngineTest.run();
             CitationExporterTest.run();
+            id.gocrawl.gui.WorkspaceControllerTest.run();
+            id.gocrawl.gui.ArticleExportServiceTest.run();
+            id.gocrawl.gui.SearchControllerTest.run();
 
             long elapsed = System.currentTimeMillis() - startTime;
             System.out.println("\n============================================================");

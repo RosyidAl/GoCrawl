@@ -5,6 +5,8 @@
 | Test | Area yang diverifikasi |
 |---|---|
 | `GarudaSearchEngineTest` | parsing hasil Portal Garuda dan pagination |
+| `WorkspaceControllerTest` | persistence project, koleksi, dan deduplikasi workspace |
+| `ArticleExportServiceTest` | ekspor CSV dan JSON dari tabel artikel |
 | `GarudaSubjectTest` | resolusi ID/nama/alias subjek |
 | `JournalCatalogTest` | load, save, pencocokan, dan filter katalog |
 | `SintaResolver` terkait | normalisasi nama/cache melalui test utilitas yang tersedia |

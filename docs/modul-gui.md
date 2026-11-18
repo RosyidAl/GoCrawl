@@ -4,15 +4,23 @@ Semua kelas GUI berada di `id.gocrawl.gui` dan memakai Swing dengan FlatLaf.
 
 ## `GoCrawlGui`
 
-Jendela utama aplikasi. Tanggung jawabnya:
+Jendela utama dan coordinator wiring aplikasi. Tanggung jawabnya:
 
 - memuat `JournalCatalog`;
-- menyediakan keyword, pencarian lanjutan, SINTA, dan rentang tahun;
-- menjalankan pencarian melalui `SwingWorker` agar UI tetap responsif;
-- mengelola cache halaman dan pagination;
+- membangun layout, menu, sidebar, dan field pencarian;
+- menghubungkan callback antar-panel dan controller;
 - meneruskan artikel terpilih ke `DetailInspectorPanel`;
-- mengelola proyek/folder workspace;
-- membuka katalog jurnal dan dialog tambah jurnal.
+- membuka dialog pengelolaan sumber crawl.
+
+Logika pencarian, workspace, dan ekspor tidak disimpan di jendela utama.
+
+## Controller dan service GUI
+
+| Kelas | Tanggung jawab |
+|---|---|
+| `SearchController` | State query, worker asynchronous, cache pagination, filter, serta dispatch Garuda/OJS |
+| `WorkspaceController` | Project, favorit, koleksi, persistence JSON, dan operasi filesystem |
+| `ArticleExportService` | Penulisan CSV/JSON; BibTeX dan RIS didelegasikan ke `CitationExporter` |
 
 Advanced Search dibuat sebagai overlay pada `JLayeredPane`, sehingga panel menempel di bawah field pencarian tanpa menggeser tabel dan inspector. Field lanjutannya mencakup judul jurnal/buku, tahun, penulis, afiliasi, akreditasi, dan rentang tahun.
 
@@ -24,7 +32,7 @@ Menampilkan hasil artikel dalam `JTable`. Fitur utama:
 - pemilihan artikel;
 - pagination dan pilihan ukuran halaman;
 - status progres;
-- ekspor CSV, JSON, BibTeX, dan RIS.
+- dialog ekspor dan callback ke `ArticleExportService`/`CitationExporter`.
 
 ## `DetailInspectorPanel`
 
@@ -34,8 +42,7 @@ Menampilkan metadata artikel terpilih dalam panel kanan bergulir. Informasi meli
 
 | Kelas | Fungsi |
 |---|---|
-| `AddJournalDialog` | Menguji dan menambahkan jurnal sumber ke katalog |
-| `IndexedJournalsDialog` | Melihat, mencari, menghapus, dan mengelola jurnal terindeks |
+| `CrawlSourcesDialog` | Menguji, menambah, mengaktifkan, dan menghapus sumber crawl |
 
 ## Alur event pencarian
 
@@ -43,10 +50,10 @@ Menampilkan metadata artikel terpilih dalam panel kanan bergulir. Informasi meli
 keyword / Enter / Mulai Crawl
           |
           v
-GoCrawlGui.handleCrawlToggle
+GoCrawlGui -> SearchController
           |
           v
-SwingWorker -> GarudaSearchEngine.searchPage
+SwingWorker -> GarudaSearchEngine / OjsCrawler
           |
           v
 ArticleTablePanel.setArticles
