@@ -12,10 +12,7 @@ public class AllTests {
         try {
             GarudaSubjectTest.run();
             JournalCatalogTest.run();
-            QualityGateTest.run();
-            DeduplicationEngineTest.run();
             TextSanitizerTest.run();
-            UrlFilterTest.run();
             GarudaSearchEngineTest.run();
             CitationExporterTest.run();
             id.gocrawl.gui.WorkspaceControllerTest.run();

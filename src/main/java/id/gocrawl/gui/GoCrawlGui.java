@@ -11,8 +11,6 @@ import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -58,22 +56,24 @@ public class GoCrawlGui extends JFrame {
     private final JTextField advancedAffiliationField = new JTextField();
     private JPanel advancedSearchPanel;
     private JButton advancedSearchButton;
-    private JLayeredPane contentLayer;
-    private JPanel searchControls;
+    private JPanel searchHeaderContent;
     private JPanel headerToolbar;
     private JSplitPane mainSplit;
     private JPanel sidebar;
     private JPanel brandBox;
     private JButton sidebarToggleBtn;
-    private JPanel koleksiListPanel;
+    private DefaultListModel<Path> collectionModel;
+    private JList<Path> collectionList;
+    private JLabel emptyCollectionsLabel;
     private boolean koleksiListExpanded = true;
+    private boolean updatingCollectionList;
     private final WorkspaceController workspace = new WorkspaceController();
 
     /** View yang sedang ditampilkan di tabel: hasil crawl atau satu koleksi. */
     private enum SidebarView { SEARCH_RESULTS, COLLECTION }
     private SidebarView activeView = SidebarView.SEARCH_RESULTS;
-    private JLabel navSearchRow;
-    private JLabel navFavoritesRow;
+    private JButton navSearchRow;
+    private JButton navFavoritesRow;
 
     private JournalCatalog catalog;
     private ArticleTablePanel tablePanel;
@@ -140,9 +140,8 @@ public class GoCrawlGui extends JFrame {
 
                     @Override
                     public void onSourceUnavailable() {
-                        JOptionPane.showMessageDialog(GoCrawlGui.this,
-                                "Tidak ada sumber crawl yang aktif. Atur di Katalog > Kelola Sumber Crawl...",
-                                "Sumber Crawl", JOptionPane.WARNING_MESSAGE);
+                        showWarning("Sumber Crawl",
+                                "Tidak ada sumber crawl yang aktif. Atur di Katalog > Kelola Sumber Crawl...");
                     }
 
                     @Override
@@ -195,17 +194,18 @@ public class GoCrawlGui extends JFrame {
             if (item instanceof JMenuItem) ((JMenuItem) item).setForeground(Color.WHITE);
         }
 
-        // 2. Toolbar Atas (baris pencarian saja â€” baris filter lanjutan diposisikan
-        // terpisah di contentLayer agar sidebar tidak ikut turun)
+        // 2. Toolbar atas dengan panel filter lanjutan yang ikut mengalir secara natural.
         headerToolbar = new JPanel(new BorderLayout(10, 0));
         headerToolbar.setBorder(new EmptyBorder(10, 14, 10, 14));
 
-        // Kolom kiri header: spacer selebar sidebar agar bar pencarian mulai
-        // persis di tepi kanan sidebar (lebarnya menyempit saat sidebar disembunyikan;
-        // tombol toggle-nya sendiri mengambang di bilah judul â€” lihat initUI bawah)
         brandBox = new JPanel(new BorderLayout());
         brandBox.setOpaque(false);
-        brandBox.setPreferredSize(new Dimension(SIDEBAR_WIDTH + 5 - 14, brandBox.getPreferredSize().height));
+        brandBox.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 1));
+        sidebarToggleBtn = new JButton("≡");
+        flatIconButton(sidebarToggleBtn, "Tampilkan / sembunyikan sidebar");
+        sidebarToggleBtn.setForeground(Color.WHITE);
+        sidebarToggleBtn.addActionListener(e -> toggleSidebar());
+        brandBox.add(sidebarToggleBtn, BorderLayout.WEST);
 
         headerToolbar.add(brandBox, BorderLayout.WEST);
 
@@ -245,13 +245,15 @@ public class GoCrawlGui extends JFrame {
             }
         });
 
-        searchControls = createSearchBar(advancedSearchButton);
-
-        // Wrapper FlowLayout kanan: baris pencarian digeser mentok ke tepi kanan jendela
-        JPanel searchArea = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        JPanel searchControls = createSearchBar(advancedSearchButton);
+        searchHeaderContent = new JPanel(new BorderLayout(0, 4));
+        searchHeaderContent.setOpaque(false);
+        JPanel searchArea = new JPanel(new BorderLayout());
         searchArea.setOpaque(false);
-        searchArea.add(searchControls);
-        headerToolbar.add(searchArea, BorderLayout.CENTER);
+        searchArea.add(searchControls, BorderLayout.CENTER);
+        searchHeaderContent.add(searchArea, BorderLayout.NORTH);
+        searchHeaderContent.add(advancedSearchPanel, BorderLayout.SOUTH);
+        headerToolbar.add(searchHeaderContent, BorderLayout.CENTER);
 
 
         // 3. Tata Letak Bersih 2-Panel (Tabel Artikel di Kiri/Tengah & Detail Inspector di Kanan)
@@ -265,38 +267,17 @@ public class GoCrawlGui extends JFrame {
         tablePanel.setOnPageChange(searchController::loadPage);
         tablePanel.setOnPageSizeChange(searchController::setPageSize);
 
-        // Sidebar dan area konten diposisikan langsung di contentLayer (tanpa appSplit):
-        // saat baris filter lanjutan terbuka, hanya area konten tengah yang turun â€”
-        // sidebar tetap menempel di bawah bar pencarian
         mainSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, tablePanel, inspectorPanel);
         mainSplit.setResizeWeight(0.68);
         mainSplit.setDividerSize(6);
 
         sidebar = createSidebar();
 
-        contentLayer = new JLayeredPane();
-        contentLayer.setLayout(null);
-        contentLayer.add(headerToolbar, JLayeredPane.DEFAULT_LAYER);
-        // Sidebar di layer lebih tinggi dari headerToolbar: keduanya overlap di 66px
-        // teratas saat sidebar pentok ke atas, dan nav-nya harus terlihat di atasnya
-        contentLayer.add(sidebar, JLayeredPane.PALETTE_LAYER);
-        contentLayer.add(mainSplit, JLayeredPane.DEFAULT_LAYER);
-        contentLayer.add(advancedSearchPanel, JLayeredPane.DEFAULT_LAYER);
-        contentLayer.addComponentListener(new ComponentAdapter() {
-            @Override public void componentResized(ComponentEvent e) {
-                layoutContentLayer();
-            }
-        });
-        add(contentLayer, BorderLayout.CENTER);
-        SwingUtilities.invokeLater(this::layoutContentLayer);
-
-        // Tombol toggle sidebar mengambang di bilah judul abu-abu, tepat di sebelah
-        // kiri tombol jendela (â€” â–¡ âœ•). Posisinya dihitung di layoutContentLayer()
-        sidebarToggleBtn = new JButton(createSidebarToggleIcon());
-        flatIconButton(sidebarToggleBtn, "Tampilkan / sembunyikan sidebar");
-        sidebarToggleBtn.setForeground(Color.WHITE);
-        sidebarToggleBtn.addActionListener(e -> toggleSidebar());
-        getLayeredPane().add(sidebarToggleBtn, JLayeredPane.POPUP_LAYER);
+        JPanel content = new JPanel(new BorderLayout());
+        content.add(headerToolbar, BorderLayout.NORTH);
+        content.add(sidebar, BorderLayout.WEST);
+        content.add(mainSplit, BorderLayout.CENTER);
+        add(content, BorderLayout.CENTER);
 
         // Pesan Awal
         tablePanel.setProgress(false, "Ketikkan kata kunci pencarian lalu tekan Enter atau klik 'Mulai Crawl'.");
@@ -315,24 +296,22 @@ public class GoCrawlGui extends JFrame {
         JPanel nav = new JPanel();
         nav.setOpaque(false);
         nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
-        navSearchRow = createNavRow("ðŸ”   Hasil Pencarian", () -> showSearchResults());
-        navFavoritesRow = createNavRow("â˜…   Favorit", () -> openFavorites());
+        navSearchRow = createNavRow("Hasil Pencarian", this::showSearchResults);
+        navFavoritesRow = createNavRow("Favorit", this::openFavorites);
         nav.add(navSearchRow);
         nav.add(navFavoritesRow);
         sidebar.add(nav, BorderLayout.NORTH);
 
-        // Seksi "Koleksi" ala panel Projects IDE: header lipat + tombol tambah,
-        // daftar koleksi bisa diklik untuk dijadikan koleksi aktif
         JPanel koleksiSection = new JPanel(new BorderLayout(0, 2));
         koleksiSection.setOpaque(false);
 
         JPanel koleksiHeader = new JPanel(new BorderLayout(2, 0));
         koleksiHeader.setOpaque(false);
-        JButton expandBtn = new JButton(koleksiListExpanded ? "â–¾" : "â–¸");
+        JButton expandBtn = new JButton(koleksiListExpanded ? "v" : ">");
         flatIconButton(expandBtn, "Lipat / bentangkan daftar koleksi");
         expandBtn.addActionListener(e -> {
             koleksiListExpanded = !koleksiListExpanded;
-            expandBtn.setText(koleksiListExpanded ? "â–¾" : "â–¸");
+            expandBtn.setText(koleksiListExpanded ? "v" : ">");
             refreshKoleksiList();
         });
         JLabel koleksiTitle = new JLabel("Koleksi");
@@ -346,16 +325,60 @@ public class GoCrawlGui extends JFrame {
         koleksiHeader.add(addBtn, BorderLayout.EAST);
         koleksiSection.add(koleksiHeader, BorderLayout.NORTH);
 
-        koleksiListPanel = new JPanel();
-        koleksiListPanel.setOpaque(false);
-        koleksiListPanel.setLayout(new BoxLayout(koleksiListPanel, BoxLayout.Y_AXIS));
-        JScrollPane koleksiScroll = new JScrollPane(koleksiListPanel);
+        collectionModel = new DefaultListModel<>();
+        collectionList = new JList<>(collectionModel);
+        collectionList.setOpaque(false);
+        collectionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        collectionList.setFixedCellHeight(30);
+        collectionList.setBorder(new EmptyBorder(2, 12, 2, 0));
+        collectionList.setSelectionBackground(new Color(228, 235, 251));
+        collectionList.setSelectionForeground(new Color(48, 78, 158));
+        collectionList.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                          boolean selected, boolean focused) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(
+                        list, value, index, selected, focused);
+                Path path = (Path) value;
+                label.setText(workspace.displayName(path) + "  (" + workspace.articleCount(path) + ")");
+                label.setToolTipText(path.toString());
+                label.setBorder(new EmptyBorder(6, 12, 6, 6));
+                if (!selected) {
+                    label.setBackground(new Color(248, 249, 252));
+                    label.setForeground(new Color(60, 60, 60));
+                }
+                return label;
+            }
+        });
+        collectionList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && !updatingCollectionList && collectionList.getSelectedValue() != null) {
+                openCollection(collectionList.getSelectedValue());
+            }
+        });
+        collectionList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) { showCollectionContextMenu(e); }
+
+            @Override
+            public void mouseReleased(MouseEvent e) { showCollectionContextMenu(e); }
+        });
+
+        JScrollPane koleksiScroll = new JScrollPane(collectionList);
         koleksiScroll.setBorder(null);
         koleksiScroll.setOpaque(false);
         koleksiScroll.getViewport().setOpaque(false);
         koleksiScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         koleksiScroll.getVerticalScrollBar().setUnitIncrement(16);
-        koleksiSection.add(koleksiScroll, BorderLayout.CENTER);
+
+        emptyCollectionsLabel = new JLabel("Belum ada koleksi");
+        emptyCollectionsLabel.setFont(emptyCollectionsLabel.getFont().deriveFont(Font.ITALIC, 11f));
+        emptyCollectionsLabel.setForeground(new Color(150, 150, 150));
+        emptyCollectionsLabel.setBorder(new EmptyBorder(4, 12, 4, 4));
+        JPanel collectionListArea = new JPanel(new BorderLayout());
+        collectionListArea.setOpaque(false);
+        collectionListArea.add(emptyCollectionsLabel, BorderLayout.NORTH);
+        collectionListArea.add(koleksiScroll, BorderLayout.CENTER);
+        koleksiSection.add(collectionListArea, BorderLayout.CENTER);
 
         sidebar.add(koleksiSection, BorderLayout.CENTER);
         refreshKoleksiList();
@@ -372,54 +395,28 @@ public class GoCrawlGui extends JFrame {
         button.setFocusable(false); // cegah border biru fokus setelah diklik
     }
 
-    /** Ikon toggle sidebar sederhana: bingkai kotak + garis pembagi panel kiri. */
-    private Icon createSidebarToggleIcon() {
-        return new Icon() {
-            @Override
-            public int getIconWidth() { return 14; }
-
-            @Override
-            public int getIconHeight() { return 14; }
-
-            @Override
-            public void paintIcon(Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(c.getForeground());
-                g2.drawRoundRect(x, y, 13, 13, 3, 3);
-                g2.drawLine(x + 5, y + 2, x + 5, y + 11);
-                g2.dispose();
-            }
-        };
-    }
-
-    /** Menampilkan/menyembunyikan sidebar kiri dan menyesuaikan ulang tata letak. */
+    /** Menampilkan/menyembunyikan sidebar kiri. */
     private void toggleSidebar() {
         boolean visible = !sidebar.isVisible();
         sidebar.setVisible(visible);
-        // Kolom kiri header menyempit saat sidebar disembunyikan (konten melebar)
         int hiddenWidth = sidebarToggleBtn.getPreferredSize().width + 4;
         brandBox.setPreferredSize(new Dimension(
-                visible ? SIDEBAR_WIDTH + 5 - 14 : hiddenWidth,
+                visible ? SIDEBAR_WIDTH : hiddenWidth,
                 brandBox.getPreferredSize().height));
         headerToolbar.revalidate();
-        layoutContentLayer();
-        SwingUtilities.invokeLater(this::updateSearchControlsWidth);
+        revalidate();
+        repaint();
     }
 
     /** Baris navigasi (Hasil Pencarian / Favorit) yang bisa diklik untuk berganti view. */
-    private JLabel createNavRow(String label, Runnable action) {
-        JLabel row = new JLabel(label);
+    private JButton createNavRow(String label, Runnable action) {
+        JButton row = new JButton(label);
         row.setOpaque(true);
         row.setBorder(new EmptyBorder(10, 9, 10, 6));
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        row.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                action.run();
-            }
-        });
+        row.setHorizontalAlignment(SwingConstants.LEFT);
+        row.setContentAreaFilled(true);
+        row.setFocusable(false);
+        row.addActionListener(e -> action.run());
         return row;
     }
 
@@ -431,7 +428,7 @@ public class GoCrawlGui extends JFrame {
                 && workspace.activeProject().equals(workspace.favoritesPath()));
     }
 
-    private void applyRowStyle(JLabel row, boolean active) {
+    private void applyRowStyle(JButton row, boolean active) {
         row.setFont(row.getFont().deriveFont(active ? Font.BOLD : Font.PLAIN, 12f));
         row.setBackground(active ? new Color(228, 235, 251) : new Color(248, 249, 252));
         row.setForeground(active ? new Color(48, 78, 158) : new Color(60, 60, 60));
@@ -439,54 +436,31 @@ public class GoCrawlGui extends JFrame {
 
     /** Menyusun ulang daftar koleksi (folder di projects/) dengan koleksi aktif disorot. */
     private void refreshKoleksiList() {
-        if (koleksiListPanel == null) return;
-        koleksiListPanel.removeAll();
-        if (koleksiListExpanded) {
+        if (collectionList == null) return;
+        updatingCollectionList = true;
+        try {
+            collectionModel.clear();
             List<Path> collections = workspace.sidebarCollections();
             Path defaultWorkspace = workspace.defaultWorkspace();
-            if (collections.size() == 1 && collections.contains(defaultWorkspace)) {
-                JLabel empty = new JLabel("Belum ada koleksi");
-                empty.setFont(empty.getFont().deriveFont(Font.ITALIC, 11f));
-                empty.setForeground(new Color(150, 150, 150));
-                empty.setBorder(new EmptyBorder(4, 26, 4, 4));
-                empty.setAlignmentX(Component.LEFT_ALIGNMENT);
-                koleksiListPanel.add(empty);
-            }
-            for (Path path : collections) {
-                koleksiListPanel.add(createKoleksiRow(path, isCollectionInView(path)));
-            }
-        }
-        koleksiListPanel.revalidate();
-        koleksiListPanel.repaint();
-    }
-
-    /** Baris koleksi: klik = muat artikel koleksi, klik kanan = hapus. */
-    private JLabel createKoleksiRow(Path path, boolean active) {
-        int count = workspace.articleCount(path);
-        JLabel row = new JLabel(workspace.displayName(path) + "  (" + count + ")");
-        row.setFont(row.getFont().deriveFont(active ? Font.BOLD : Font.PLAIN, 12f));
-        row.setOpaque(true);
-        row.setBorder(new EmptyBorder(6, 26, 6, 6));
-        row.setToolTipText(path.toString());
-        row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        if (active) {
-            row.setBackground(new Color(228, 235, 251));
-            row.setForeground(new Color(48, 78, 158));
-        } else {
-            row.setBackground(new Color(248, 249, 252));
-            row.setForeground(new Color(60, 60, 60));
-        }
-        row.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (SwingUtilities.isRightMouseButton(e)) {
-                    showCollectionContextMenu(e, path, row);
+            boolean empty = collections.isEmpty()
+                    || (collections.size() == 1 && collections.contains(defaultWorkspace));
+            emptyCollectionsLabel.setVisible(koleksiListExpanded && empty);
+            collectionList.setVisible(koleksiListExpanded && !empty);
+            if (koleksiListExpanded && !empty) {
+                collections.forEach(collectionModel::addElement);
+                if (activeView == SidebarView.COLLECTION) {
+                    collectionList.setSelectedValue(workspace.activeProject(), true);
                 } else {
-                    openCollection(path);
+                    collectionList.clearSelection();
                 }
+            } else {
+                collectionList.clearSelection();
             }
-        });
-        return row;
+        } finally {
+            updatingCollectionList = false;
+        }
+        collectionList.revalidate();
+        collectionList.repaint();
     }
 
     private boolean isCollectionInView(Path path) {
@@ -494,28 +468,30 @@ public class GoCrawlGui extends JFrame {
                 && workspace.activeProject().equals(path.toAbsolutePath().normalize());
     }
 
-    private void showCollectionContextMenu(MouseEvent e, Path path, Component row) {
+    private void showCollectionContextMenu(MouseEvent e) {
+        if (!e.isPopupTrigger()) return;
+        int index = collectionList.locationToIndex(e.getPoint());
+        if (index < 0 || !collectionList.getCellBounds(index, index).contains(e.getPoint())) return;
+        Path path = collectionModel.getElementAt(index);
         if (!workspace.canDelete(path)) return;
         JPopupMenu menu = new JPopupMenu();
         JMenuItem deleteItem = new JMenuItem("Hapus Koleksi...");
         deleteItem.addActionListener(ev -> deleteCollection(path));
         menu.add(deleteItem);
-        menu.show(row, e.getX(), e.getY());
+        menu.show(collectionList, e.getX(), e.getY());
     }
 
     /** Menghapus folder koleksi secara rekursif setelah konfirmasi pengguna. */
     private void deleteCollection(Path path) {
         if (!workspace.canDelete(path)) return;
-        int confirm = JOptionPane.showConfirmDialog(this,
+        if (!confirm("Hapus Koleksi",
                 "Hapus koleksi \"" + workspace.displayName(path) + "\" beserta seluruh isinya?",
-                "Hapus Koleksi", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-        if (confirm != JOptionPane.YES_OPTION) return;
+                JOptionPane.WARNING_MESSAGE)) return;
         boolean wasActive = isCollectionInView(path);
         try {
             workspace.deleteCollection(path);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Gagal menghapus koleksi: " + ex.getMessage(),
-                    "Hapus Koleksi", JOptionPane.ERROR_MESSAGE);
+            showError("Hapus Koleksi", "Gagal menghapus koleksi: " + ex.getMessage());
             return;
         }
         if (wasActive) {
@@ -546,10 +522,9 @@ public class GoCrawlGui extends JFrame {
         try {
             setActiveProject(workspace.createCollection(name));
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Buat Koleksi", JOptionPane.WARNING_MESSAGE);
+            showWarning("Buat Koleksi", ex.getMessage());
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Gagal membuat koleksi: " + ex.getMessage(),
-                    "Buat Koleksi", JOptionPane.ERROR_MESSAGE);
+            showError("Buat Koleksi", "Gagal membuat koleksi: " + ex.getMessage());
         }
     }
 
@@ -625,58 +600,6 @@ public class GoCrawlGui extends JFrame {
         return label;
     }
 
-    private void layoutContentLayer() {
-        int headerHeight = headerToolbar.isVisible() ? headerToolbar.getPreferredSize().height : 0;
-        boolean filterOpen = advancedSearchPanel.isVisible();
-        int filterHeight = filterOpen ? advancedSearchPanel.getPreferredSize().height : 0;
-        int contentLeft = sidebar.isVisible() ? SIDEBAR_WIDTH + 5 : 14 + sidebarToggleBtn.getPreferredSize().width + 4;
-
-        headerToolbar.setBounds(0, 0, contentLayer.getWidth(), headerHeight);
-
-        // Tombol toggle mengambang di bilah judul: kiri tiga tombol jendela (Â±132px),
-        // dikecilkan dan dipusatkan vertikal agar tidak mentok tepi atas
-        if (sidebarToggleBtn != null) {
-            int toggleX = Math.max(0, getRootPane().getWidth() - 3 * 44 - 8
-                    - sidebarToggleBtn.getPreferredSize().width);
-            sidebarToggleBtn.setBounds(toggleX, 3, sidebarToggleBtn.getPreferredSize().width, 26);
-        }
-
-        if (sidebar.isVisible()) {
-            // Sidebar pentok ke atas: dari tepi bilah judul sampai dasar jendela
-            // (baris filter lanjutan hanya ada di kolom konten, tidak menyentuhnya)
-            sidebar.setBounds(0, 0, SIDEBAR_WIDTH, contentLayer.getHeight());
-        }
-
-        // Baris filter lanjutan mengisi area konten (rata dengan bar pencarian)
-        if (filterOpen) {
-            advancedSearchPanel.setBounds(contentLeft, headerHeight,
-                    Math.max(0, contentLayer.getWidth() - contentLeft),
-                    advancedSearchPanel.getPreferredSize().height);
-        }
-
-        // Konten tengah turun mengikuti baris filter; melebar penuh saat sidebar disembunyikan
-        int contentTop = headerHeight + filterHeight;
-        mainSplit.setBounds(contentLeft, contentTop,
-                Math.max(0, contentLayer.getWidth() - contentLeft),
-                Math.max(0, contentLayer.getHeight() - contentTop));
-        if (headerToolbar.isVisible()) {
-            updateSearchControlsWidth();
-        }
-    }
-
-    /** Menghitung lebar bar pencarian: dari tepi kiri wrapper hingga margin kanan header (mentok kanan). */
-    private void updateSearchControlsWidth() {
-        if (searchControls == null || searchControls.getParent() == null || contentLayer == null) return;
-        Container searchArea = searchControls.getParent();
-        Point areaLeft = SwingUtilities.convertPoint(searchArea, 0, 0, contentLayer);
-        int width = Math.max(460, contentLayer.getWidth() - areaLeft.x - 14);
-        Dimension pref = searchControls.getPreferredSize();
-        if (width != pref.width) {
-            searchControls.setPreferredSize(new Dimension(width, pref.height));
-            searchControls.revalidate();
-        }
-    }
-
     /** Inspector hanya muncul saat ada artikel yang dipilih di tabel. */
     private void showArticleInInspector(Article article) {
         inspectorPanel.setArticle(article);
@@ -694,9 +617,9 @@ public class GoCrawlGui extends JFrame {
     private void toggleAdvancedSearch(JButton anchor) {
         boolean visible = !advancedSearchPanel.isVisible();
         advancedSearchPanel.setVisible(visible);
-        anchor.setText(visible ? "Pencarian Lanjutan â–´" : "Pencarian Lanjutan â–¾");
-        // Tinggi header berubah saat panel muncul/hilang â†’ hitung ulang batas konten
-        layoutContentLayer();
+        anchor.setText(visible ? "Pencarian Lanjutan ^" : "Pencarian Lanjutan v");
+        searchHeaderContent.revalidate();
+        searchHeaderContent.repaint();
     }
 
     private String buildAdvancedQuery() {
@@ -718,9 +641,8 @@ public class GoCrawlGui extends JFrame {
 
         String keyword = buildAdvancedQuery();
         if (keyword.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Ketikkan kata kunci pencarian terlebih dahulu (cth: 'pendidikan karakter', 'deep learning').",
-                    "Validasi Kata Kunci", JOptionPane.WARNING_MESSAGE);
+            showWarning("Validasi Kata Kunci",
+                    "Ketikkan kata kunci pencarian terlebih dahulu (cth: 'pendidikan karakter', 'deep learning').");
             return;
         }
 
@@ -730,20 +652,18 @@ public class GoCrawlGui extends JFrame {
             if (!fromYearField.getText().isBlank()) fromYear = Integer.parseInt(fromYearField.getText().strip());
             if (!toYearField.getText().isBlank()) toYear = Integer.parseInt(toYearField.getText().strip());
             if (fromYear != null && toYear != null && fromYear > toYear) {
-                JOptionPane.showMessageDialog(this, "Tahun awal tidak boleh melebihi tahun akhir.",
-                        "Validasi Tahun", JOptionPane.WARNING_MESSAGE);
+                showWarning("Validasi Tahun", "Tahun awal tidak boleh melebihi tahun akhir.");
                 return;
             }
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Format tahun harus berupa angka.",
-                    "Validasi Tahun", JOptionPane.WARNING_MESSAGE);
+            showWarning("Validasi Tahun", "Format tahun harus berupa angka.");
             return;
         }
 
         SintaFilterItem selectedSinta = (SintaFilterItem) sintaComboBox.getSelectedItem();
         activeView = SidebarView.SEARCH_RESULTS;
-        headerToolbar.setVisible(true);
-        headerToolbar.revalidate();
+        searchHeaderContent.setVisible(true);
+        searchHeaderContent.revalidate();
         refreshNavHighlight();
         refreshKoleksiList();
         tablePanel.setBrowseMode(false);
@@ -770,9 +690,8 @@ public class GoCrawlGui extends JFrame {
     private void saveResultsManually() {
         List<Article> articles = searchController.accumulatedArticles();
         if (articles.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Belum ada hasil pencarian untuk disimpan. Jalankan pencarian terlebih dahulu.",
-                    "Simpan Hasil Pencarian", JOptionPane.WARNING_MESSAGE);
+            showWarning("Simpan Hasil Pencarian",
+                    "Belum ada hasil pencarian untuk disimpan. Jalankan pencarian terlebih dahulu.");
             return;
         }
 
@@ -786,19 +705,15 @@ public class GoCrawlGui extends JFrame {
             target = target.resolveSibling(target.getFileName().toString() + ".json");
         }
         if (java.nio.file.Files.exists(target)) {
-            int confirm = JOptionPane.showConfirmDialog(this,
-                    "Berkas \"" + target.getFileName() + "\" sudah ada. Timpa?",
-                    "Simpan Hasil Pencarian", JOptionPane.YES_NO_OPTION);
-            if (confirm != JOptionPane.YES_OPTION) return;
+            if (!confirm("Simpan Hasil Pencarian",
+                    "Berkas \"" + target.getFileName() + "\" sudah ada. Timpa?")) return;
         }
         try {
             workspace.saveJson(target, articles);
-            JOptionPane.showMessageDialog(this,
-                    "Berhasil menyimpan " + articles.size() + " artikel ke:\n" + target,
-                    "Simpan Hasil Pencarian", JOptionPane.INFORMATION_MESSAGE);
+            showInfo("Simpan Hasil Pencarian",
+                    "Berhasil menyimpan " + articles.size() + " artikel ke:\n" + target);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Gagal menyimpan: " + ex.getMessage(),
-                    "Simpan Hasil Pencarian", JOptionPane.ERROR_MESSAGE);
+            showError("Simpan Hasil Pencarian", "Gagal menyimpan: " + ex.getMessage());
         }
     }
 
@@ -813,9 +728,8 @@ public class GoCrawlGui extends JFrame {
         activeView = SidebarView.SEARCH_RESULTS;
         refreshNavHighlight();
         refreshKoleksiList();
-        headerToolbar.setVisible(true);
-        headerToolbar.revalidate();
-        layoutContentLayer();
+        searchHeaderContent.setVisible(true);
+        searchHeaderContent.revalidate();
         tablePanel.setBrowseMode(false);
 
         SearchController.Page page = searchController.visiblePage();
@@ -855,8 +769,7 @@ public class GoCrawlGui extends JFrame {
         try {
             return workspace.addToCollection(collection, article);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Gagal menambahkan ke koleksi: " + ex.getMessage(),
-                    "Tambah ke Koleksi", JOptionPane.ERROR_MESSAGE);
+            showError("Tambah ke Koleksi", "Gagal menambahkan ke koleksi: " + ex.getMessage());
             return false;
         }
     }
@@ -864,9 +777,8 @@ public class GoCrawlGui extends JFrame {
     private void showAddToCollectionDialog(Article article) {
         List<Path> collections = workspace.userCollections();
         if (collections.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                    "Belum ada koleksi. Buat dulu lewat tombol + di sidebar.",
-                    "Tambah ke Koleksi", JOptionPane.INFORMATION_MESSAGE);
+            showInfo("Tambah ke Koleksi",
+                    "Belum ada koleksi. Buat dulu lewat tombol + di sidebar.");
             return;
         }
 
@@ -891,12 +803,10 @@ public class GoCrawlGui extends JFrame {
 
         Path target = (Path) combo.getSelectedItem();
         if (appendArticleToCollection(target, article)) {
-            JOptionPane.showMessageDialog(this,
-                    "Artikel ditambahkan ke koleksi \"" + workspace.displayName(target) + "\".",
-                    "Tambah ke Koleksi", JOptionPane.INFORMATION_MESSAGE);
+            showInfo("Tambah ke Koleksi",
+                    "Artikel ditambahkan ke koleksi \"" + workspace.displayName(target) + "\".");
         } else {
-            JOptionPane.showMessageDialog(this, "Artikel sudah ada di koleksi tersebut.",
-                    "Tambah ke Koleksi", JOptionPane.INFORMATION_MESSAGE);
+            showInfo("Tambah ke Koleksi", "Artikel sudah ada di koleksi tersebut.");
         }
     }
 
@@ -905,7 +815,7 @@ public class GoCrawlGui extends JFrame {
         activeView = SidebarView.COLLECTION;
         setActiveProject(path);
         refreshNavHighlight();
-        headerToolbar.setVisible(false);
+        searchHeaderContent.setVisible(false);
         if (advancedSearchPanel.isVisible()) toggleAdvancedSearch(advancedSearchButton);
 
         List<Article> saved = workspace.loadCollection(path);
@@ -915,25 +825,42 @@ public class GoCrawlGui extends JFrame {
                 ? "Koleksi \"" + workspace.displayName(path) + "\" masih kosong."
                 : "");
         tablePanel.setBrowseMode(true);
-        layoutContentLayer();
     }
 
     private void removeFromActiveCollection(Article article) {
         if (activeView != SidebarView.COLLECTION) return;
         Path collection = workspace.activeProject();
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "Buang artikel ini dari koleksi \"" + workspace.displayName(collection) + "\"?",
-                "Buang dari Koleksi", JOptionPane.YES_NO_OPTION);
-        if (confirm != JOptionPane.YES_OPTION) return;
+        if (!confirm("Buang dari Koleksi",
+                "Buang artikel ini dari koleksi \"" + workspace.displayName(collection) + "\"?")) return;
         try {
             List<Article> existing = workspace.removeFromCollection(collection, article);
             tablePanel.setArticles(existing);
             tablePanel.updatePagination(1, 1, existing.size(), existing.size());
             refreshKoleksiList();
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Gagal membuang artikel: " + ex.getMessage(),
-                    "Buang dari Koleksi", JOptionPane.ERROR_MESSAGE);
+            showError("Buang dari Koleksi", "Gagal membuang artikel: " + ex.getMessage());
         }
+    }
+
+    private void showInfo(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void showWarning(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.WARNING_MESSAGE);
+    }
+
+    private void showError(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.ERROR_MESSAGE);
+    }
+
+    private boolean confirm(String title, String message) {
+        return confirm(title, message, JOptionPane.QUESTION_MESSAGE);
+    }
+
+    private boolean confirm(String title, String message, int messageType) {
+        return JOptionPane.showConfirmDialog(this, message, title,
+                JOptionPane.YES_NO_OPTION, messageType) == JOptionPane.YES_OPTION;
     }
 
     private static void applyTitleBarTheme() {

@@ -2,9 +2,6 @@ package id.gocrawl.gui;
 
 import id.gocrawl.Article;
 import id.gocrawl.JournalCatalog;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -13,18 +10,14 @@ import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.File;
-import java.io.InputStream;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Panel Kanan (Inspector Detail ala Mendeley): Menampilkan detail metadata lengkap artikel,
  * termasuk asal institusi/penerbit, jurnal, penulis, DOI ber-hyperlink, teks abstrak lengkap,
- * serta tombol aksi web & pengunduh PDF.
+ * serta tombol aksi untuk membuka halaman web.
  *
  * Menggunakan ResponsiveScrollPanel (Scrollable) untuk mencegah bug teks melar horizontal
  * dan mengeliminasi nested scrollbar.
@@ -44,8 +37,6 @@ public class DetailInspectorPanel extends JPanel {
     private final JTextArea abstractArea = new JTextArea();
 
     private final JButton openWebBtn = new JButton("Buka di Web (OJS)");
-    private final JButton downloadPdfBtn = new JButton("Unduh PDF");
-    private final JLabel downloadStatusLabel = new JLabel("");
 
     private final JournalCatalog catalog;
     private Article currentArticle;
@@ -90,67 +81,20 @@ public class DetailInspectorPanel extends JPanel {
                 new LineBorder(new Color(220, 220, 220), 1, true),
                 new EmptyBorder(10, 10, 10, 10)
         ));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(3, 2, 3, 2);
-        gbc.anchor = GridBagConstraints.NORTHWEST;
-
-        // Asal / Penerbit
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Penerbit:"), gbc);
         originLabel.setFont(originLabel.getFont().deriveFont(Font.BOLD));
         originLabel.setForeground(new Color(30, 80, 180));
-        gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        metaBox.add(originLabel, gbc);
-
-        // Nama Jurnal
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Nama Jurnal:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        metaBox.add(journalLabel, gbc);
-
-        // Core Subject
-        gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Core Subject:"), gbc);
         coreSubjectLabel.setForeground(new Color(30, 80, 160));
         coreSubjectLabel.setFont(coreSubjectLabel.getFont().deriveFont(Font.BOLD));
-        gbc.gridx = 1; gbc.gridy = 2; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        metaBox.add(coreSubjectLabel, gbc);
-
-        // Bidang / Subjek
-        gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Bidang:"), gbc);
         subjectLabel.setForeground(new Color(60, 120, 60));
         subjectLabel.setFont(subjectLabel.getFont().deriveFont(Font.BOLD));
-        gbc.gridx = 1; gbc.gridy = 3; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        metaBox.add(subjectLabel, gbc);
-
-        // Akreditasi
-        gbc.gridx = 0; gbc.gridy = 4; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Akreditasi:"), gbc);
         sintaLabel.setForeground(new Color(180, 80, 20));
         sintaLabel.setFont(sintaLabel.getFont().deriveFont(Font.BOLD));
-        gbc.gridx = 1; gbc.gridy = 4; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        metaBox.add(sintaLabel, gbc);
 
-        // Penulis
-        gbc.gridx = 0; gbc.gridy = 5; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Penulis:"), gbc);
         authorsArea.setEditable(false);
         authorsArea.setLineWrap(true);
         authorsArea.setWrapStyleWord(true);
         authorsArea.setBackground(metaBox.getBackground());
-        gbc.gridx = 1; gbc.gridy = 5; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        metaBox.add(authorsArea, gbc);
 
-        // Tahun
-        gbc.gridx = 0; gbc.gridy = 6; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Tahun:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 6; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        metaBox.add(yearLabel, gbc);
-
-        // DOI
-        gbc.gridx = 0; gbc.gridy = 7; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("DOI:"), gbc);
         doiLabel.setForeground(new Color(0, 102, 204));
         doiLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         doiLabel.addMouseListener(new MouseAdapter() {
@@ -161,12 +105,7 @@ public class DetailInspectorPanel extends JPanel {
                 }
             }
         });
-        gbc.gridx = 1; gbc.gridy = 7; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        metaBox.add(doiLabel, gbc);
 
-        // Tautan Web
-        gbc.gridx = 0; gbc.gridy = 8; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
-        metaBox.add(createFieldLabel("Tautan OJS:"), gbc);
         urlLabel.setForeground(new Color(0, 102, 204));
         urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         urlLabel.addMouseListener(new MouseAdapter() {
@@ -177,8 +116,16 @@ public class DetailInspectorPanel extends JPanel {
                 }
             }
         });
-        gbc.gridx = 1; gbc.gridy = 8; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-        metaBox.add(urlLabel, gbc);
+
+        addMetadataRow(metaBox, 0, "Penerbit:", originLabel);
+        addMetadataRow(metaBox, 1, "Nama Jurnal:", journalLabel);
+        addMetadataRow(metaBox, 2, "Core Subject:", coreSubjectLabel);
+        addMetadataRow(metaBox, 3, "Bidang:", subjectLabel);
+        addMetadataRow(metaBox, 4, "Akreditasi:", sintaLabel);
+        addMetadataRow(metaBox, 5, "Penulis:", authorsArea);
+        addMetadataRow(metaBox, 6, "Tahun:", yearLabel);
+        addMetadataRow(metaBox, 7, "DOI:", doiLabel);
+        addMetadataRow(metaBox, 8, "Tautan OJS:", urlLabel);
 
         contentPanel.add(metaBox);
         contentPanel.add(Box.createVerticalStrut(12));
@@ -219,14 +166,9 @@ public class DetailInspectorPanel extends JPanel {
         JPanel bottomActionPanel = new JPanel(new BorderLayout(0, 4));
         bottomActionPanel.setBorder(new EmptyBorder(10, 2, 2, 2));
 
-        JPanel btnRow = new JPanel(new GridLayout(1, 2, 8, 0));
+        JPanel btnRow = new JPanel(new GridLayout(1, 1, 8, 0));
         btnRow.add(openWebBtn);
-        btnRow.add(downloadPdfBtn);
         bottomActionPanel.add(btnRow, BorderLayout.NORTH);
-
-        downloadStatusLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        downloadStatusLabel.setFont(downloadStatusLabel.getFont().deriveFont(11f));
-        bottomActionPanel.add(downloadStatusLabel, BorderLayout.SOUTH);
 
         add(bottomActionPanel, BorderLayout.SOUTH);
 
@@ -239,7 +181,6 @@ public class DetailInspectorPanel extends JPanel {
                 openBrowser(currentArticle.url());
             }
         });
-        downloadPdfBtn.addActionListener(e -> handleDownloadPdf());
     }
 
     public void setArticle(Article article) {
@@ -264,8 +205,6 @@ public class DetailInspectorPanel extends JPanel {
             urlLabel.setToolTipText(null);
             abstractArea.setText("");
             openWebBtn.setEnabled(false);
-            downloadPdfBtn.setEnabled(false);
-            downloadStatusLabel.setText("");
             return;
         }
 
@@ -362,85 +301,6 @@ public class DetailInspectorPanel extends JPanel {
         abstractArea.setCaretPosition(0);
 
         openWebBtn.setEnabled(article.url() != null && !article.url().isBlank());
-        downloadPdfBtn.setEnabled(article.url() != null && !article.url().isBlank());
-        downloadStatusLabel.setText("");
-    }
-
-    private void handleDownloadPdf() {
-        if (currentArticle == null || currentArticle.url() == null || currentArticle.url().isBlank()) return;
-
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Simpan Berkas PDF Artikel");
-        String safeTitle = currentArticle.title().replaceAll("[^a-zA-Z0-9_-]", "_");
-        if (safeTitle.length() > 60) safeTitle = safeTitle.substring(0, 60);
-        chooser.setSelectedFile(new File(safeTitle + ".pdf"));
-
-        int result = chooser.showSaveDialog(this);
-        if (result != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-
-        File targetFile = chooser.getSelectedFile();
-        downloadPdfBtn.setEnabled(false);
-        downloadStatusLabel.setText("Mencari berkas PDF di portal OJS...");
-        downloadStatusLabel.setForeground(Color.BLUE);
-
-        // Kunci artikel yang diunduh sekarang: jika pengguna memilih artikel lain
-        // selagi unduhan berjalan, proses tetap mengunduh artikel yang benar
-        Article articleToDownload = currentArticle;
-
-        SwingWorker<Boolean, Void> worker = new SwingWorker<>() {
-            private String resolvedUrl = "";
-
-            @Override
-            protected Boolean doInBackground() throws Exception {
-                Document doc = Jsoup.connect(articleToDownload.url())
-                        .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) GoCrawl PDF Downloader")
-                        .timeout(5000)
-                        .followRedirects(true)
-                        .get();
-
-                Element metaPdf = doc.selectFirst("meta[name=citation_pdf_url]");
-                if (metaPdf != null && !metaPdf.attr("content").isBlank()) {
-                    resolvedUrl = metaPdf.attr("content").strip();
-                }
-
-                if (resolvedUrl.isEmpty()) {
-                    Element aPdf = doc.selectFirst("a.obj_galley_link.pdf, a.pdf, a[href*='/article/download/'], a[href*='/article/view/'][href$='.pdf']");
-                    if (aPdf != null) {
-                        resolvedUrl = aPdf.absUrl("href");
-                    }
-                }
-
-                if (resolvedUrl.contains("/article/view/")) {
-                    resolvedUrl = resolvedUrl.replace("/article/view/", "/article/download/");
-                }
-
-                if (resolvedUrl.isEmpty()) {
-                    throw new IllegalStateException("Link PDF tidak ditemukan di halaman jurnal.");
-                }
-
-                try (InputStream in = URI.create(resolvedUrl).toURL().openStream()) {
-                    Files.copy(in, targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                }
-                return true;
-            }
-
-            @Override
-            protected void done() {
-                downloadPdfBtn.setEnabled(true);
-                try {
-                    get();
-                    downloadStatusLabel.setText("PDF berhasil diunduh ke: " + targetFile.getName());
-                    downloadStatusLabel.setForeground(new Color(34, 139, 34));
-                } catch (Exception ex) {
-                    Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
-                    downloadStatusLabel.setText("Gagal mengunduh PDF: " + cause.getMessage());
-                    downloadStatusLabel.setForeground(Color.RED);
-                }
-            }
-        };
-        worker.execute();
     }
 
     private void openBrowser(String url) {
@@ -460,6 +320,26 @@ public class DetailInspectorPanel extends JPanel {
         metaFieldLabels.add(label);
         metaLabelColumnWidth = Math.max(metaLabelColumnWidth, label.getPreferredSize().width);
         return label;
+    }
+
+    private void addMetadataRow(JPanel panel, int row, String label, JComponent value) {
+        GridBagConstraints labelGbc = new GridBagConstraints();
+        labelGbc.gridx = 0;
+        labelGbc.gridy = row;
+        labelGbc.weightx = 0;
+        labelGbc.fill = GridBagConstraints.NONE;
+        labelGbc.anchor = GridBagConstraints.NORTHWEST;
+        labelGbc.insets = new Insets(3, 2, 3, 2);
+        panel.add(createFieldLabel(label), labelGbc);
+
+        GridBagConstraints valueGbc = new GridBagConstraints();
+        valueGbc.gridx = 1;
+        valueGbc.gridy = row;
+        valueGbc.weightx = 1;
+        valueGbc.fill = GridBagConstraints.HORIZONTAL;
+        valueGbc.anchor = GridBagConstraints.NORTHWEST;
+        valueGbc.insets = new Insets(3, 2, 3, 2);
+        panel.add(value, valueGbc);
     }
 
     private static String escapeHtml(String text) {

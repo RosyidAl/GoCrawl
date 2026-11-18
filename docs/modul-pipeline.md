@@ -30,20 +30,6 @@ Mesin pencarian Portal Garuda pada endpoint `/documents`.
 
 `parseDocumentPage` dapat digunakan langsung pada HTML fixture tanpa melakukan HTTP, sehingga cocok untuk pengujian parser.
 
-## `MetadataExtractor`
-
-Ekstraktor fallback untuk halaman OJS. Urutan ekstraksi memprioritaskan meta tag akademik Highwire/Dublin Core/OpenGraph, lalu selector DOM OJS modern, lalu fallback judul dokumen atau nama jurnal yang diberikan.
-
-Field yang diekstrak:
-
-- judul dan penulis
-- tanggal/tahun publikasi
-- abstrak
-- DOI
-- nama jurnal
-- URL kanonikal
-- kata kunci
-
 ## `SintaResolver`
 
 Resolver menggunakan nama jurnal yang dinormalisasi sebagai cache key. Urutannya:

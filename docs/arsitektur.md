@@ -7,7 +7,7 @@ GUI
    |
    +--> SearchController ----------> GarudaSearchEngine / OjsCrawler
    |          |                     (worker, cache, pagination)
-   |          +--> MetadataExtractor / TextSanitizer
+   |          +--> TextSanitizer
    |          +--> JournalCatalog --> SintaResolver --> data/sinta_cache.json
    |
    +--> WorkspaceController --------> ArticleStorage --> projects/ dan output/
