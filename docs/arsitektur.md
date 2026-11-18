@@ -5,23 +5,25 @@
 ```text
 GUI
    |
-   +--> GarudaSearchEngine --------> Portal Garuda documents
-   |          |                     (HTML hasil pencarian)
+   +--> SearchController ----------> GarudaSearchEngine / OjsCrawler
+   |          |                     (worker, cache, pagination)
    |          +--> MetadataExtractor / TextSanitizer
    |          +--> JournalCatalog --> SintaResolver --> data/sinta_cache.json
    |
-   +--> ArticleStorage / CitationExporter --> output/
+   +--> WorkspaceController --------> ArticleStorage --> projects/ dan output/
+   |
+   +--> ArticleExportService / CitationExporter --> file ekspor
 ```
 
 ## Alur pencarian
 
 1. Pengguna memasukkan keyword dan filter pada GUI.
-2. `GarudaSearchEngine.SearchOptions` menyimpan keyword, subjek, SINTA minimum, rentang tahun, dan halaman.
-3. Mesin membentuk URL Portal Garuda, mengirim HTTP request, lalu menerima HTML.
-4. HTML diparse menjadi `Article` melalui selector Portal Garuda.
-5. Artikel disaring berdasarkan rentang tahun, subjek, dan SINTA bila katalog tersedia.
-6. GUI melakukan pagination, cache halaman, deduplikasi hasil, dan mengirim artikel terpilih ke inspector.
-7. Hasil dapat diekspor atau disimpan sebagai JSON/CSV.
+2. `SearchController.Request` menyimpan keyword, SINTA minimum, rentang tahun, dan ukuran halaman.
+3. Controller memilih sumber Garuda/OJS, menjalankan worker, lalu mengelola cache pagination.
+4. Mesin crawler membentuk request dan memparse HTML menjadi `Article`.
+5. Artikel disaring berdasarkan rentang tahun, subjek, SINTA, dan deduplikasi.
+6. Hasil dikirim ke tabel dan artikel terpilih diteruskan ke inspector.
+7. Workspace dan service ekspor menangani persistence secara terpisah dari UI.
 
 ## Alur katalog jurnal
 

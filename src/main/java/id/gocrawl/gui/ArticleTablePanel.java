@@ -14,12 +14,8 @@ import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -307,49 +303,31 @@ public class ArticleTablePanel extends JPanel {
         updateCountLabel();
     }
 
-    public synchronized void addArticle(Article article) {
-        if (article == null) return;
-        SwingUtilities.invokeLater(() -> {
-            allArticles.add(article);
-            String firstAuthor = article.authors() != null ? article.authors().split(";")[0].strip() : "-";
-            String origin = catalog != null ? catalog.resolveOrigin(article.url(), article.journal()) : "-";
-            String sinta = catalog != null ? catalog.resolveSintaRank(article.url(), article.journal()) : "-";
-            tableModel.addRow(new Object[]{
-                    article.title(),
-                    article.journal(),
-                    sinta,
-                    origin,
-                    firstAuthor,
-                    article.year(),
-                    article.doi() == null || article.doi().isBlank() ? "-" : article.doi()
-            });
-            updateCountLabel();
-        });
-    }
-
     public synchronized void setArticles(List<Article> articles) {
         SwingUtilities.invokeLater(() -> {
             allArticles.clear();
             tableModel.setRowCount(0);
             if (articles != null) {
                 allArticles.addAll(articles);
-                for (Article a : articles) {
-                    String firstAuthor = a.authors() != null ? a.authors().split(";")[0].strip() : "-";
-                    String origin = catalog != null ? catalog.resolveOrigin(a.url(), a.journal()) : "-";
-                    String sinta = catalog != null ? catalog.resolveSintaRank(a.url(), a.journal()) : "-";
-                    tableModel.addRow(new Object[]{
-                            a.title(),
-                            a.journal(),
-                            sinta,
-                            origin,
-                            firstAuthor,
-                            a.year(),
-                            a.doi() == null || a.doi().isBlank() ? "-" : a.doi()
-                    });
-                }
+                articles.forEach(article -> tableModel.addRow(toTableRow(article)));
             }
             updateCountLabel();
         });
+    }
+
+    private Object[] toTableRow(Article article) {
+        String firstAuthor = article.authors() != null ? article.authors().split(";")[0].strip() : "-";
+        String origin = catalog != null ? catalog.resolveOrigin(article.url(), article.journal()) : "-";
+        String sinta = catalog != null ? catalog.resolveSintaRank(article.url(), article.journal()) : "-";
+        return new Object[]{
+                article.title(),
+                article.journal(),
+                sinta,
+                origin,
+                firstAuthor,
+                article.year(),
+                article.doi() == null || article.doi().isBlank() ? "-" : article.doi()
+        };
     }
 
     private void triggerJump() {
@@ -436,18 +414,6 @@ public class ArticleTablePanel extends JPanel {
         return item instanceof Integer ? (Integer) item : 25;
     }
 
-    public void setPageSize(int size) {
-        SwingUtilities.invokeLater(() -> pageSizeComboBox.setSelectedItem(size));
-    }
-
-    public int getCurrentPage() {
-        return currentPage;
-    }
-
-    public int getTotalPages() {
-        return totalPages;
-    }
-
     public void clearArticles() {
         SwingUtilities.invokeLater(() -> {
             allArticles.clear();
@@ -472,10 +438,6 @@ public class ArticleTablePanel extends JPanel {
             return allArticles.get(modelRow);
         }
         return null;
-    }
-
-    public List<Article> getAllArticles() {
-        return new ArrayList<>(allArticles);
     }
 
     private void updateCountLabel() {
@@ -504,63 +466,16 @@ public class ArticleTablePanel extends JPanel {
                 switch (ext.toLowerCase()) {
                     case "bib" -> CitationExporter.exportBibTeX(file.toPath(), allArticles);
                     case "ris" -> CitationExporter.exportRIS(file.toPath(), allArticles);
-                    case "csv" -> exportCsv(file);
-                    case "json" -> exportJson(file);
+                    case "csv" -> ArticleExportService.export(file.toPath(), ArticleExportService.Format.CSV,
+                            allArticles, catalog);
+                    case "json" -> ArticleExportService.export(file.toPath(), ArticleExportService.Format.JSON,
+                            allArticles, catalog);
                 }
                 JOptionPane.showMessageDialog(this, "Berhasil mengekspor " + allArticles.size() + " artikel ke " + file.getName(), "Ekspor Sukses", JOptionPane.INFORMATION_MESSAGE);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Gagal mengekspor: " + ex.getMessage(), "Error Ekspor", JOptionPane.ERROR_MESSAGE);
             }
         }
-    }
-
-    private void exportCsv(File file) throws IOException {
-        try (BufferedWriter w = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8)) {
-            w.write("\"Title\",\"Journal\",\"Origin/Publisher\",\"Authors\",\"Year\",\"DOI\",\"URL\",\"Abstract\"\n");
-            for (Article a : allArticles) {
-                String origin = catalog != null ? catalog.resolveOrigin(a.url(), a.journal()) : "-";
-                w.write(String.format("\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n",
-                        escapeCsv(a.title()),
-                        escapeCsv(a.journal()),
-                        escapeCsv(origin),
-                        escapeCsv(a.authors()),
-                        escapeCsv(a.year()),
-                        escapeCsv(a.doi()),
-                        escapeCsv(a.url()),
-                        escapeCsv(a.abstractText())));
-            }
-        }
-    }
-
-    private void exportJson(File file) throws IOException {
-        try (BufferedWriter w = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8)) {
-            w.write("[\n");
-            for (int i = 0; i < allArticles.size(); i++) {
-                Article a = allArticles.get(i);
-                String origin = catalog != null ? catalog.resolveOrigin(a.url(), a.journal()) : "-";
-                w.write("  {\n");
-                w.write("    \"title\": \"" + escapeJson(a.title()) + "\",\n");
-                w.write("    \"journal\": \"" + escapeJson(a.journal()) + "\",\n");
-                w.write("    \"origin\": \"" + escapeJson(origin) + "\",\n");
-                w.write("    \"authors\": \"" + escapeJson(a.authors()) + "\",\n");
-                w.write("    \"year\": \"" + escapeJson(a.year()) + "\",\n");
-                w.write("    \"doi\": \"" + escapeJson(a.doi()) + "\",\n");
-                w.write("    \"url\": \"" + escapeJson(a.url()) + "\",\n");
-                w.write("    \"abstract\": \"" + escapeJson(a.abstractText()) + "\"\n");
-                w.write("  }" + (i < allArticles.size() - 1 ? ",\n" : "\n"));
-            }
-            w.write("]\n");
-        }
-    }
-
-    private String escapeCsv(String s) {
-        if (s == null) return "";
-        return s.replace("\"", "\"\"").replace("\r", " ").replace("\n", " ");
-    }
-
-    private String escapeJson(String s) {
-        if (s == null) return "";
-        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", "\\r").replace("\n", "\\n");
     }
 
     private void copyToClipboard(String text) {
