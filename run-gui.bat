@@ -4,6 +4,8 @@ title GoCrawl Desktop
 where javac >nul 2>nul
 if %errorlevel% equ 0 if exist "src\main\java" (
     echo Menyiapkan versi terbaru GoCrawl...
+    if not exist "target\classes" mkdir "target\classes"
+    if exist "target\classes\module-info.class" del /f /q "target\classes\module-info.class"
     javac -encoding UTF-8 -cp "lib/jsoup-1.18.3.jar;lib/flatlaf-3.8.jar" -d target/classes src\main\java\id\gocrawl\*.java src\main\java\id\gocrawl\gui\*.java
     if errorlevel 1 (
         echo.

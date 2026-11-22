@@ -5,10 +5,14 @@ import id.gocrawl.CitationExporter;
 import id.gocrawl.JournalCatalog;
 
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.datatransfer.StringSelection;
@@ -22,10 +26,14 @@ import java.util.List;
 import java.util.function.Consumer;
 
 /**
- * Panel Tengah: Menampilkan tabel daftar artikel dengan kolom Penerbit Jurnal yang jelas,
- * pencarian/penyaringan instan (real-time), bilah progres, serta tombol ekspor (CSV, JSON, BibTeX, RIS).
+ * Panel Tengah: Menampilkan empty state eksplorasi atau tabel daftar artikel modern
+ * dengan pill badge akreditasi SINTA, indikator seleksi 2px, filter real-time,
+ * bilah progres, serta menu dropdown ekspor (CSV, JSON, BibTeX, RIS).
  */
 public class ArticleTablePanel extends JPanel {
+
+    private static final String CARD_EMPTY = "EMPTY";
+    private static final String CARD_TABLE = "TABLE";
 
     private final String[] COLUMN_NAMES = {"Judul Artikel", "Jurnal", "Akreditasi", "Penerbit", "Penulis", "Tahun", "DOI"};
     private final DefaultTableModel tableModel = new DefaultTableModel(COLUMN_NAMES, 0) {
@@ -36,7 +44,12 @@ public class ArticleTablePanel extends JPanel {
     };
     private final JTable table = new JTable(tableModel);
     private final TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
-    private final JTextField filterField = new JTextField(18);
+    private final JTextField filterField = new JTextField(20);
+
+    private final CardLayout stageLayout = new CardLayout();
+    private final JPanel stagePanel = new JPanel(stageLayout);
+    private JPanel searchEmptyCard;
+    private JPanel collectionEmptyCard;
 
     private final JLabel countLabel = new JLabel("0 artikel");
     private final JButton firstPageBtn = new JButton("«");
@@ -58,6 +71,7 @@ public class ArticleTablePanel extends JPanel {
     private Consumer<Article> onAddToFavorites;
     private Consumer<Article> onRequestAddToCollection;
     private Consumer<Article> onRemoveFromCollection;
+    private Consumer<String> onSampleKeywordSelected;
     private boolean browseMode = false;
 
     private int currentPage = 1;
@@ -71,94 +85,91 @@ public class ArticleTablePanel extends JPanel {
     }
 
     private void initUI() {
-        setLayout(new BorderLayout(0, 6));
-        setBorder(new EmptyBorder(8, 8, 8, 8));
+        setLayout(new BorderLayout(0, 8));
+        setBackground(AcademicTheme.SURFACE);
+        setBorder(new EmptyBorder(4, 14, 8, 14));
 
-        // 1. Bilah Filter & Ekspor Atas
+        // 1. Bilah Filter & Dropdown Ekspor
         JPanel topPanel = new JPanel(new BorderLayout(10, 0));
-        JPanel filterBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-        filterBox.add(new JLabel("Saring Tabel:"));
+        topPanel.setOpaque(false);
+
+        AcademicTheme.styleInput(filterField, "Saring Tabel...");
+        filterField.setBackground(AcademicTheme.CARD_BG);
+        filterField.setPreferredSize(new Dimension(240, 32));
+        filterField.putClientProperty("JTextField.leadingIcon", AcademicIcons.filter(AcademicTheme.TEXT_MUTED, 14));
+        filterField.putClientProperty("JTextField.showClearButton", true);
+
+        JPanel filterBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        filterBox.setOpaque(false);
         filterBox.add(filterField);
         topPanel.add(filterBox, BorderLayout.WEST);
 
-        JPanel exportBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 2));
-        JButton exportCsvBtn = new JButton("Ekspor CSV");
-        JButton exportJsonBtn = new JButton("Ekspor JSON");
-        JButton exportBibBtn = new JButton("Ekspor BibTeX");
-        JButton exportRisBtn = new JButton("Ekspor RIS");
+        JButton exportMenuBtn = new JButton("Ekspor", AcademicIcons.download(AcademicTheme.ON_SURFACE_VARIANT, 14));
+        AcademicTheme.styleOutlineButton(exportMenuBtn);
+        exportMenuBtn.setPreferredSize(new Dimension(98, 32));
+        JPopupMenu exportPopup = buildExportPopupMenu();
+        exportMenuBtn.addActionListener(e -> exportPopup.show(exportMenuBtn, 0, exportMenuBtn.getHeight() + 4));
 
-        exportBox.add(exportCsvBtn);
-        exportBox.add(exportJsonBtn);
-        exportBox.add(exportBibBtn);
-        exportBox.add(exportRisBtn);
+        JPanel exportBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        exportBox.setOpaque(false);
+        exportBox.add(exportMenuBtn);
         topPanel.add(exportBox, BorderLayout.EAST);
 
         add(topPanel, BorderLayout.NORTH);
 
-        // 2. Tabel Artikel
-        table.setRowSorter(sorter);
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.setRowHeight(26);
-        table.getColumnModel().getColumn(0).setPreferredWidth(320); // Judul Artikel
-        table.getColumnModel().getColumn(1).setPreferredWidth(160); // Jurnal
-        table.getColumnModel().getColumn(2).setPreferredWidth(75);  // Akreditasi
-        table.getColumnModel().getColumn(3).setPreferredWidth(150); // Penerbit
-        table.getColumnModel().getColumn(4).setPreferredWidth(120); // Penulis
-        table.getColumnModel().getColumn(5).setPreferredWidth(55);  // Tahun
-        table.getColumnModel().getColumn(6).setPreferredWidth(100); // DOI
-
-        javax.swing.table.DefaultTableCellRenderer centerRenderer = new javax.swing.table.DefaultTableCellRenderer();
-        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        table.getColumnModel().getColumn(2).setCellRenderer(centerRenderer);
-        table.getColumnModel().getColumn(5).setCellRenderer(centerRenderer);
-
+        // 2. Stage Tengah (Empty State <-> Tabel)
+        configureTable();
         JScrollPane tableScroll = new JScrollPane(table);
-        add(tableScroll, BorderLayout.CENTER);
+        tableScroll.setBorder(new LineBorder(AcademicTheme.BORDER_SUBTLE, 1, true));
+        tableScroll.getViewport().setBackground(AcademicTheme.CARD_BG);
 
-        // 3. Bilah Status Bawah
+        searchEmptyCard = createSearchEmptyState();
+        collectionEmptyCard = createCollectionEmptyState();
+
+        JPanel emptyContainer = new JPanel(new CardLayout());
+        emptyContainer.setOpaque(false);
+        emptyContainer.add(searchEmptyCard, "SEARCH");
+        emptyContainer.add(collectionEmptyCard, "COLLECTION");
+
+        stagePanel.setOpaque(false);
+        stagePanel.add(emptyContainer, CARD_EMPTY);
+        stagePanel.add(tableScroll, CARD_TABLE);
+        add(stagePanel, BorderLayout.CENTER);
+
+        // 3. Bilah Status & Paginasi Bawah
         JPanel bottomPanel = new JPanel(new BorderLayout(8, 0));
-        bottomPanel.setBorder(new EmptyBorder(2, 6, 8, 6));
-        countLabel.setFont(countLabel.getFont().deriveFont(Font.PLAIN, 12f));
-        countLabel.setForeground(new Color(110, 110, 110));
+        bottomPanel.setOpaque(false);
+        bottomPanel.setBorder(new EmptyBorder(4, 2, 2, 2));
+
+        countLabel.setFont(AcademicTheme.uiFont(Font.PLAIN, 12f));
+        countLabel.setForeground(AcademicTheme.TEXT_MUTED);
         bottomPanel.add(countLabel, BorderLayout.WEST);
 
-        // Kontrol paginasi di pojok kanan bilah bawah
-        JPanel centerBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        JPanel centerBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+        centerBox.setOpaque(false);
 
-        firstPageBtn.setFont(firstPageBtn.getFont().deriveFont(Font.BOLD, 14f));
-        firstPageBtn.setToolTipText("Halaman Pertama");
-        firstPageBtn.setPreferredSize(new Dimension(32, 26));
-        firstPageBtn.setEnabled(false);
+        stylePaginationButton(firstPageBtn, "Halaman Pertama", 30);
         firstPageBtn.addActionListener(e -> changePage(1));
-
-        prevPageBtn.setFont(prevPageBtn.getFont().deriveFont(Font.BOLD, 15f));
-        prevPageBtn.setToolTipText("Halaman Sebelumnya");
-        prevPageBtn.setPreferredSize(new Dimension(32, 26));
-        prevPageBtn.setEnabled(false);
+        stylePaginationButton(prevPageBtn, "Halaman Sebelumnya", 30);
         prevPageBtn.addActionListener(e -> changePage(currentPage - 1));
 
-        pageTotalLabel.setFont(pageTotalLabel.getFont().deriveFont(Font.PLAIN, 12f));
-        pageTotalLabel.setForeground(new Color(110, 110, 110));
-        pageTotalLabel.setBorder(new EmptyBorder(0, 2, 0, 8));
-
-        nextPageBtn.setFont(nextPageBtn.getFont().deriveFont(Font.BOLD, 15f));
-        nextPageBtn.setToolTipText("Halaman Berikutnya");
-        nextPageBtn.setPreferredSize(new Dimension(32, 26));
-        nextPageBtn.setEnabled(false);
-        nextPageBtn.addActionListener(e -> changePage(currentPage + 1));
-
-        lastPageBtn.setFont(lastPageBtn.getFont().deriveFont(Font.BOLD, 14f));
-        lastPageBtn.setToolTipText("Halaman Terakhir");
-        lastPageBtn.setPreferredSize(new Dimension(32, 26));
-        lastPageBtn.setEnabled(false);
-        lastPageBtn.addActionListener(e -> changePage(totalPages));
-
         jumpPageField.setHorizontalAlignment(JTextField.CENTER);
-        jumpPageField.setPreferredSize(new Dimension(44, 26));
+        jumpPageField.setFont(AcademicTheme.monoFont(Font.PLAIN, 12f));
+        jumpPageField.setPreferredSize(new Dimension(44, 28));
         jumpPageField.setToolTipText("Ketik nomor halaman lalu tekan Enter");
         jumpPageField.addActionListener(e -> triggerJump());
 
-        pageSizeComboBox.setPreferredSize(new Dimension(58, 26));
+        pageTotalLabel.setFont(AcademicTheme.monoFont(Font.PLAIN, 12f));
+        pageTotalLabel.setForeground(AcademicTheme.TEXT_MUTED);
+        pageTotalLabel.setBorder(new EmptyBorder(0, 2, 0, 6));
+
+        stylePaginationButton(nextPageBtn, "Halaman Berikutnya", 30);
+        nextPageBtn.addActionListener(e -> changePage(currentPage + 1));
+        stylePaginationButton(lastPageBtn, "Halaman Terakhir", 30);
+        lastPageBtn.addActionListener(e -> changePage(totalPages));
+
+        pageSizeComboBox.setPreferredSize(new Dimension(60, 28));
+        pageSizeComboBox.setFont(AcademicTheme.monoFont(Font.PLAIN, 12f));
         pageSizeComboBox.setSelectedItem(25);
         pageSizeComboBox.setToolTipText("Artikel per halaman");
         pageSizeComboBox.addActionListener(e -> {
@@ -176,9 +187,11 @@ public class ArticleTablePanel extends JPanel {
         centerBox.add(pageSizeComboBox);
         bottomPanel.add(centerBox, BorderLayout.CENTER);
 
-        JPanel progressBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        progressLabel.setFont(progressLabel.getFont().deriveFont(11f));
-        progressBar.setPreferredSize(new Dimension(160, 16));
+        JPanel progressBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        progressBox.setOpaque(false);
+        progressLabel.setFont(AcademicTheme.uiFont(Font.PLAIN, 11.5f));
+        progressLabel.setForeground(AcademicTheme.ON_SURFACE_VARIANT);
+        progressBar.setPreferredSize(new Dimension(150, 12));
         progressBar.setVisible(false);
         progressBox.add(progressLabel);
         progressBox.add(progressBar);
@@ -186,7 +199,7 @@ public class ArticleTablePanel extends JPanel {
 
         add(bottomPanel, BorderLayout.SOUTH);
 
-        // Instant filter as user types
+        // Instant filter
         filterField.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { applyFilter(); }
             public void removeUpdate(DocumentEvent e) { applyFilter(); }
@@ -205,15 +218,188 @@ public class ArticleTablePanel extends JPanel {
                             onArticleSelected.accept(a);
                         }
                     }
-                } else {
-                    if (onArticleSelected != null) {
-                        onArticleSelected.accept(null);
-                    }
+                } else if (onArticleSelected != null) {
+                    onArticleSelected.accept(null);
                 }
             }
         });
 
-        // Right-Click Context Menu
+        setupContextMenu();
+        updateStageVisibility();
+    }
+
+    private void configureTable() {
+        table.setRowSorter(sorter);
+        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setRowHeight(32);
+        table.setShowHorizontalLines(true);
+        table.setShowVerticalLines(false);
+        table.setIntercellSpacing(new Dimension(0, 0));
+        table.setFillsViewportHeight(true);
+        table.setFont(AcademicTheme.uiFont(Font.PLAIN, 13f));
+        table.setBackground(AcademicTheme.CARD_BG);
+        table.setForeground(AcademicTheme.ON_SURFACE);
+        table.setSelectionBackground(AcademicTheme.SELECTION_FILL);
+        table.setSelectionForeground(AcademicTheme.ON_SURFACE);
+
+        JTableHeader header = table.getTableHeader();
+        header.setFont(AcademicTheme.uiFont(Font.BOLD, 11.5f));
+        header.setBackground(AcademicTheme.SURFACE_LOW);
+        header.setForeground(AcademicTheme.TEXT_MUTED);
+        header.setPreferredSize(new Dimension(header.getPreferredSize().width, 34));
+        header.setReorderingAllowed(false);
+
+        table.getColumnModel().getColumn(0).setPreferredWidth(320); // Judul Artikel
+        table.getColumnModel().getColumn(1).setPreferredWidth(160); // Jurnal
+        table.getColumnModel().getColumn(2).setPreferredWidth(85);  // Akreditasi
+        table.getColumnModel().getColumn(3).setPreferredWidth(150); // Penerbit
+        table.getColumnModel().getColumn(4).setPreferredWidth(120); // Penulis
+        table.getColumnModel().getColumn(5).setPreferredWidth(62);  // Tahun
+        table.getColumnModel().getColumn(6).setPreferredWidth(115); // DOI
+
+        table.setDefaultRenderer(Object.class, new AcademicCellRenderer(false));
+        table.getColumnModel().getColumn(2).setCellRenderer(new SintaBadgeRenderer());
+        table.getColumnModel().getColumn(5).setCellRenderer(new AcademicCellRenderer(true, SwingConstants.CENTER));
+        table.getColumnModel().getColumn(6).setCellRenderer(new AcademicCellRenderer(true, SwingConstants.LEFT));
+    }
+
+    private JPopupMenu buildExportPopupMenu() {
+        JPopupMenu menu = new JPopupMenu();
+        JMenuItem csv = new JMenuItem("Format CSV (.csv)");
+        JMenuItem json = new JMenuItem("Format JSON (.json)");
+        JMenuItem bib = new JMenuItem("BibTeX (LaTeX) (.bib)");
+        JMenuItem ris = new JMenuItem("Format RIS (EndNote) (.ris)");
+
+        csv.addActionListener(e -> exportData("csv", "Comma Separated Values (*.csv)"));
+        json.addActionListener(e -> exportData("json", "JSON Documents (*.json)"));
+        bib.addActionListener(e -> exportData("bib", "BibTeX References (*.bib)"));
+        ris.addActionListener(e -> exportData("ris", "RIS Citations (*.ris)"));
+
+        menu.add(csv);
+        menu.add(json);
+        menu.add(bib);
+        menu.add(ris);
+        return menu;
+    }
+
+    private JPanel createSearchEmptyState() {
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(AcademicTheme.CARD_BG);
+        card.setBorder(AcademicTheme.cardBorder(28));
+
+        JPanel center = new JPanel();
+        center.setOpaque(false);
+        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
+        center.setMaximumSize(new Dimension(560, 480));
+
+        JLabel iconBox = new JLabel(AcademicIcons.emptyConstellation(68));
+        iconBox.setAlignmentX(Component.CENTER_ALIGNMENT);
+        iconBox.setOpaque(true);
+        iconBox.setBackground(AcademicTheme.SURFACE);
+        iconBox.setBorder(new CompoundBorder(
+                new LineBorder(AcademicTheme.BORDER_SUBTLE, 1, true),
+                new EmptyBorder(12, 12, 12, 12)
+        ));
+        center.add(iconBox);
+        center.add(Box.createVerticalStrut(18));
+
+        JLabel title = new JLabel("Mulai Eksplorasi Literatur Ilmiah");
+        title.setFont(AcademicTheme.uiFont(Font.BOLD, 20f));
+        title.setForeground(AcademicTheme.ON_SURFACE);
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        center.add(title);
+        center.add(Box.createVerticalStrut(8));
+
+        JLabel desc = new JLabel("<html><div style='text-align:center; width:430px;'>"
+                + "Ketik kata kunci pencarian di atas untuk menelusuri puluhan ribu jurnal terindeks "
+                + "di Indonesia seperti Garuda, Neliti, dan portal kampus.</div></html>");
+        desc.setFont(AcademicTheme.uiFont(Font.PLAIN, 13.5f));
+        desc.setForeground(AcademicTheme.ON_SURFACE_VARIANT);
+        desc.setAlignmentX(Component.CENTER_ALIGNMENT);
+        center.add(desc);
+        center.add(Box.createVerticalStrut(22));
+
+        JLabel chipHeading = new JLabel("CONTOH KATA KUNCI POPULER:");
+        chipHeading.setFont(AcademicTheme.uiFont(Font.BOLD, 11f));
+        chipHeading.setForeground(AcademicTheme.TEXT_MUTED);
+        chipHeading.setAlignmentX(Component.CENTER_ALIGNMENT);
+        center.add(chipHeading);
+        center.add(Box.createVerticalStrut(8));
+
+        JPanel chips = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 6));
+        chips.setOpaque(false);
+        chips.setMaximumSize(new Dimension(540, 90));
+        String[] samples = {
+                "Model Chart Datum MLWS",
+                "Hukum Perdata Islam",
+                "Algoritma Genetika",
+                "Analisis Sentimen Twitter"
+        };
+        for (String kw : samples) {
+            JButton chip = new JButton(kw, AcademicIcons.arrowUpRight(AcademicTheme.TEXT_MUTED, 14));
+            chip.setIconTextGap(6);
+            chip.setFont(AcademicTheme.uiFont(Font.PLAIN, 12.5f));
+            chip.setBackground(AcademicTheme.SURFACE_CONTAINER);
+            chip.setForeground(AcademicTheme.ON_SURFACE);
+            chip.setFocusPainted(false);
+            chip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            chip.putClientProperty("FlatLaf.style", "arc: 999; borderWidth: 0; hoverBackground: #DCE9FF");
+            chip.addActionListener(e -> {
+                if (onSampleKeywordSelected != null) {
+                    onSampleKeywordSelected.accept(kw);
+                }
+            });
+            chips.add(chip);
+        }
+        center.add(chips);
+        center.add(Box.createVerticalStrut(20));
+
+        JLabel trust = new JLabel("Sinta & Scopus Parsed   ·   DOI Resolution Support   ·   Realtime OJS Fetch");
+        trust.setFont(AcademicTheme.monoFont(Font.PLAIN, 11.5f));
+        trust.setForeground(AcademicTheme.TEXT_MUTED);
+        trust.setAlignmentX(Component.CENTER_ALIGNMENT);
+        center.add(trust);
+
+        card.add(center);
+        return card;
+    }
+
+    private JPanel createCollectionEmptyState() {
+        JPanel card = new JPanel(new GridBagLayout());
+        card.setBackground(AcademicTheme.CARD_BG);
+        card.setBorder(AcademicTheme.cardBorder(24));
+
+        JPanel center = new JPanel();
+        center.setOpaque(false);
+        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
+
+        JLabel title = new JLabel("Koleksi Ini Masih Kosong");
+        title.setFont(AcademicTheme.uiFont(Font.BOLD, 17f));
+        title.setForeground(AcademicTheme.ON_SURFACE);
+        title.setAlignmentX(Component.CENTER_ALIGNMENT);
+        center.add(title);
+        center.add(Box.createVerticalStrut(6));
+
+        JLabel desc = new JLabel("Tambahkan artikel dari hasil pencarian melalui klik kanan pada baris tabel.");
+        desc.setFont(AcademicTheme.uiFont(Font.PLAIN, 13f));
+        desc.setForeground(AcademicTheme.ON_SURFACE_VARIANT);
+        desc.setAlignmentX(Component.CENTER_ALIGNMENT);
+        center.add(desc);
+
+        card.add(center);
+        return card;
+    }
+
+    private void stylePaginationButton(JButton btn, String tooltip, int width) {
+        btn.setFont(AcademicTheme.uiFont(Font.BOLD, 13f));
+        btn.setToolTipText(tooltip);
+        btn.setPreferredSize(new Dimension(width, 28));
+        btn.setEnabled(false);
+        btn.setFocusPainted(false);
+        btn.putClientProperty("FlatLaf.style", "arc: 8");
+    }
+
+    private void setupContextMenu() {
         JPopupMenu contextMenu = new JPopupMenu();
         JMenuItem copyTitleItem = new JMenuItem("Salin Judul");
         JMenuItem copyDoiItem = new JMenuItem("Salin DOI");
@@ -238,15 +424,16 @@ public class ArticleTablePanel extends JPanel {
             public void mouseReleased(MouseEvent e) {
                 if (e.isPopupTrigger()) showMenu(e);
             }
+
             @Override
             public void mousePressed(MouseEvent e) {
                 if (e.isPopupTrigger()) showMenu(e);
             }
+
             private void showMenu(MouseEvent e) {
                 int r = table.rowAtPoint(e.getPoint());
                 if (r >= 0 && r < table.getRowCount()) {
                     table.setRowSelectionInterval(r, r);
-                    // "Buang dari Koleksi" hanya relevan saat membuka sebuah koleksi
                     removeFromCollectionItem.setVisible(browseMode);
                     contextMenu.show(e.getComponent(), e.getX(), e.getY());
                 }
@@ -282,15 +469,21 @@ public class ArticleTablePanel extends JPanel {
             if (a != null && a.url() != null && !a.url().isBlank()) {
                 try {
                     Desktop.getDesktop().browse(new URI(a.url()));
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         });
+    }
 
-        // Export Actions
-        exportCsvBtn.addActionListener(e -> exportData("csv", "Comma Separated Values (*.csv)"));
-        exportJsonBtn.addActionListener(e -> exportData("json", "JSON Documents (*.json)"));
-        exportBibBtn.addActionListener(e -> exportData("bib", "BibTeX References (*.bib)"));
-        exportRisBtn.addActionListener(e -> exportData("ris", "RIS Citations (*.ris)"));
+    private void updateStageVisibility() {
+        if (allArticles.isEmpty()) {
+            JPanel emptyContainer = (JPanel) stagePanel.getComponent(0);
+            CardLayout cl = (CardLayout) emptyContainer.getLayout();
+            cl.show(emptyContainer, browseMode ? "COLLECTION" : "SEARCH");
+            stageLayout.show(stagePanel, CARD_EMPTY);
+        } else {
+            stageLayout.show(stagePanel, CARD_TABLE);
+        }
     }
 
     private void applyFilter() {
@@ -312,6 +505,7 @@ public class ArticleTablePanel extends JPanel {
                 articles.forEach(article -> tableModel.addRow(toTableRow(article)));
             }
             updateCountLabel();
+            updateStageVisibility();
         });
     }
 
@@ -405,8 +599,13 @@ public class ArticleTablePanel extends JPanel {
         this.onRemoveFromCollection = callback;
     }
 
+    public void setOnSampleKeywordSelected(Consumer<String> callback) {
+        this.onSampleKeywordSelected = callback;
+    }
+
     public void setBrowseMode(boolean browseMode) {
         this.browseMode = browseMode;
+        updateStageVisibility();
     }
 
     public int getPageSize() {
@@ -419,6 +618,7 @@ public class ArticleTablePanel extends JPanel {
             allArticles.clear();
             tableModel.setRowCount(0);
             updateCountLabel();
+            updateStageVisibility();
         });
     }
 
@@ -481,5 +681,84 @@ public class ArticleTablePanel extends JPanel {
     private void copyToClipboard(String text) {
         if (text == null) return;
         Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(text), null);
+    }
+
+    /** Renderer sel tabel dengan garis seleksi 2px biru di sisi kiri pada kolom pertama. */
+    private static final class AcademicCellRenderer extends DefaultTableCellRenderer {
+        private final boolean monospace;
+        private final int align;
+
+        AcademicCellRenderer(boolean monospace) {
+            this(monospace, SwingConstants.LEFT);
+        }
+
+        AcademicCellRenderer(boolean monospace, int align) {
+            this.monospace = monospace;
+            this.align = align;
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            JLabel lbl = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, false, row, column);
+            lbl.setFont(monospace ? AcademicTheme.monoFont(Font.PLAIN, 12f) : AcademicTheme.uiFont(Font.PLAIN, 13f));
+            lbl.setHorizontalAlignment(align);
+            lbl.setBackground(isSelected ? AcademicTheme.SELECTION_FILL : AcademicTheme.CARD_BG);
+            lbl.setForeground(AcademicTheme.ON_SURFACE);
+            if (isSelected && column == 0) {
+                lbl.setBorder(new CompoundBorder(
+                        BorderFactory.createMatteBorder(0, 2, 0, 0, AcademicTheme.PRIMARY),
+                        new EmptyBorder(0, 8, 0, 8)
+                ));
+            } else {
+                lbl.setBorder(new EmptyBorder(0, 10, 0, 10));
+            }
+            return lbl;
+        }
+    }
+
+    /** Renderer pill badge berwarna untuk kolom akreditasi SINTA/Scopus. */
+    private static final class SintaBadgeRenderer extends DefaultTableCellRenderer {
+        private String rankText = "-";
+        private boolean selectedRow = false;
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                       boolean hasFocus, int row, int column) {
+            this.rankText = value == null || value.toString().isBlank() ? "-" : value.toString().trim().toUpperCase();
+            this.selectedRow = isSelected;
+            setOpaque(true);
+            setBackground(isSelected ? AcademicTheme.SELECTION_FILL : AcademicTheme.CARD_BG);
+            return this;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(selectedRow ? AcademicTheme.SELECTION_FILL : AcademicTheme.CARD_BG);
+            g2.fillRect(0, 0, getWidth(), getHeight());
+
+            Color[] colors = AcademicTheme.sintaBadgeColors(rankText);
+            Font font = AcademicTheme.uiFont(Font.BOLD, 11f);
+            g2.setFont(font);
+            FontMetrics fm = g2.getFontMetrics();
+            int textW = fm.stringWidth(rankText);
+            int pillW = Math.max(30, textW + 16);
+            int pillH = 20;
+            int x = (getWidth() - pillW) / 2;
+            int y = (getHeight() - pillH) / 2;
+
+            g2.setColor(colors[1]);
+            g2.fillRoundRect(x, y, pillW, pillH, pillH, pillH);
+            g2.setColor(colors[2]);
+            g2.drawRoundRect(x, y, pillW - 1, pillH - 1, pillH, pillH);
+
+            g2.setColor(colors[0]);
+            int tx = x + (pillW - textW) / 2;
+            int ty = y + ((pillH - fm.getHeight()) / 2) + fm.getAscent();
+            g2.drawString(rankText, tx, ty);
+            g2.dispose();
+        }
     }
 }

@@ -38,21 +38,20 @@ public class GoCrawlGui extends JFrame {
     }
 
     /** Warna tombol Cari (biru) dan tombol Stop (merah) pada baris pencarian. */
-    private static final Color SEARCH_BTN_BLUE = new Color(0, 114, 188);
-    private static final Color SEARCH_BTN_RED = new Color(198, 40, 40);
+    private static final Color SEARCH_BTN_BLUE = AcademicTheme.PRIMARY;
+    private static final Color SEARCH_BTN_RED = AcademicTheme.DANGER;
 
-    /** Warna bilah judul abu-abu dan hover menu-nya. */
-    private static final Color TITLE_BAR_BACKGROUND = new Color(80, 86, 94);
-    private static final Color TITLE_BAR_HOVER = new Color(97, 103, 112);
+    /** Warna bilah judul terang senada sidebar. */
+    private static final Color TITLE_BAR_BACKGROUND = AcademicTheme.SURFACE_LOW;
 
     /** Lebar kolom sidebar; sekaligus garis potong kiri bar pencarian (tepi kanan sidebar). */
-    private static final int SIDEBAR_WIDTH = 220;
+    private static final int SIDEBAR_WIDTH = 236;
 
     private final JTextField keywordField = new JTextField(20);
     private final JComboBox<SintaFilterItem> sintaComboBox = new JComboBox<>();
     private final JTextField fromYearField = new JTextField("2021", 5);
     private final JTextField toYearField = new JTextField("2026", 5);
-    private final JButton crawlBtn = new JButton("ðŸ” Cari");
+    private final JButton crawlBtn = new JButton("Cari");
     private final JTextField advancedJournalField = new JTextField();
     private final JTextField advancedAuthorField = new JTextField();
     private final JTextField advancedAffiliationField = new JTextField();
@@ -72,8 +71,11 @@ public class GoCrawlGui extends JFrame {
     /** View yang sedang ditampilkan di tabel: hasil crawl atau satu koleksi. */
     private enum SidebarView { SEARCH_RESULTS, COLLECTION }
     private SidebarView activeView = SidebarView.SEARCH_RESULTS;
-    private JLabel navSearchRow;
-    private JLabel navFavoritesRow;
+    private RoundedPanel navSearchRow;
+    private RoundedPanel navFavoritesRow;
+    private JLabel navSearchLabel;
+    private JLabel navFavoritesLabel;
+    private PillLabel navFavoritesCount;
 
     private JournalCatalog catalog;
     private ArticleTablePanel tablePanel;
@@ -82,7 +84,7 @@ public class GoCrawlGui extends JFrame {
     private SearchController searchController;
 
     public GoCrawlGui() {
-        super("GoCrawl Desktop â€” Academic Research Engine");
+        super("GoCrawl Desktop — Academic Research Engine");
         initCatalog();
         initUI();
     }
@@ -121,11 +123,6 @@ public class GoCrawlGui extends JFrame {
                         tablePanel.updatePagination(page.page(), page.totalPages(),
                                 page.totalRecords(), page.articles().size());
                         tablePanel.setProgress(false, "");
-                        try {
-                            workspace.saveSearchOutput(searchController.accumulatedArticles());
-                        } catch (Exception ignored) {
-                            // Auto-save bersifat best effort; hasil tetap tampil di tabel.
-                        }
                     }
 
                     @Override
@@ -185,56 +182,65 @@ public class GoCrawlGui extends JFrame {
         catalogMenu.add(manageSourcesItem);
         menuBar.add(catalogMenu);
 
-        setJMenuBar(menuBar);
-        // Bilah judul abu-abu: client property ini menonaktifkan bilah "unified"
-        // FlatLaf (yang mengikuti latar window putih) dan memberi warna judul
-        getRootPane().putClientProperty("JRootPane.titleBarBackground", TITLE_BAR_BACKGROUND);
-        getRootPane().putClientProperty("JRootPane.titleBarForeground", Color.WHITE);
-        menuBar.setForeground(Color.WHITE);
-        for (MenuElement item : menuBar.getSubElements()) {
-            if (item instanceof JMenuItem) ((JMenuItem) item).setForeground(Color.WHITE);
-        }
+        JMenu helpMenu = new JMenu("Help");
+        JMenuItem aboutItem = new JMenuItem("Tentang GoCrawl");
+        aboutItem.addActionListener(e -> JOptionPane.showMessageDialog(this,
+                "GoCrawl Desktop — Academic Research Engine\n"
+                        + "Penelusuran & kurasi literatur ilmiah Indonesia (Garuda, OJS, SINTA).\n"
+                        + "Shortcut: Ctrl+K (Fokus Pencarian) · Ctrl+1 (Hasil Pencarian)",
+                "Tentang GoCrawl", JOptionPane.INFORMATION_MESSAGE));
+        helpMenu.add(aboutItem);
+        menuBar.add(helpMenu);
 
-        // 2. Toolbar Atas (baris pencarian saja â€” baris filter lanjutan diposisikan
-        // terpisah di contentLayer agar sidebar tidak ikut turun)
-        headerToolbar = new JPanel(new BorderLayout(10, 0));
-        headerToolbar.setBorder(new EmptyBorder(10, 14, 10, 14));
+        setJMenuBar(menuBar);
+        // Bilah judul terang senada sidebar, bersih tanpa judul/ikon di tengah atas
+        getRootPane().putClientProperty("JRootPane.titleBarBackground", TITLE_BAR_BACKGROUND);
+        getRootPane().putClientProperty("JRootPane.titleBarForeground", AcademicTheme.ON_SURFACE);
+        getRootPane().putClientProperty("JRootPane.titleBarShowTitle", false);
+        getRootPane().putClientProperty("JRootPane.titleBarShowIcon", false);
+        menuBar.setForeground(AcademicTheme.ON_SURFACE_VARIANT);
+
+        // 2. Toolbar Atas (Search Card 2 baris)
+        headerToolbar = new JPanel(new BorderLayout(0, 0));
+        headerToolbar.setBackground(AcademicTheme.SURFACE);
+        headerToolbar.setBorder(new EmptyBorder(10, 14, 6, 14));
 
         // Kolom kiri header: spacer selebar sidebar agar bar pencarian mulai
-        // persis di tepi kanan sidebar (lebarnya menyempit saat sidebar disembunyikan;
-        // tombol toggle-nya sendiri mengambang di bilah judul â€” lihat initUI bawah)
+        // persis di tepi kanan sidebar
         brandBox = new JPanel(new BorderLayout());
         brandBox.setOpaque(false);
-        brandBox.setPreferredSize(new Dimension(SIDEBAR_WIDTH + 5 - 14, brandBox.getPreferredSize().height));
-
+        brandBox.setPreferredSize(new Dimension(SIDEBAR_WIDTH - 14, 1));
         headerToolbar.add(brandBox, BorderLayout.WEST);
 
         // Inisialisasi ComboBox Akreditasi
-        sintaComboBox.addItem(new SintaFilterItem("ALL", "Semua"));
-        sintaComboBox.addItem(new SintaFilterItem("S1", "Minimal S1"));
-        sintaComboBox.addItem(new SintaFilterItem("S2", "Minimal S2"));
-        sintaComboBox.addItem(new SintaFilterItem("S3", "Minimal S3"));
-        sintaComboBox.addItem(new SintaFilterItem("S4", "Minimal S4"));
-        sintaComboBox.addItem(new SintaFilterItem("S5", "Minimal S5"));
-        sintaComboBox.addItem(new SintaFilterItem("S6", "Minimal S6"));
-        sintaComboBox.setPreferredSize(new Dimension(115, 28));
+        sintaComboBox.addItem(new SintaFilterItem("ALL", "Semua Akreditasi (Sinta 1-6 & Scopus)"));
+        sintaComboBox.addItem(new SintaFilterItem("S1", "Minimal Sinta 1 (S1)"));
+        sintaComboBox.addItem(new SintaFilterItem("S2", "Minimal Sinta 2 (S2)"));
+        sintaComboBox.addItem(new SintaFilterItem("S3", "Minimal Sinta 3 (S3)"));
+        sintaComboBox.addItem(new SintaFilterItem("S4", "Minimal Sinta 4 (S4)"));
+        sintaComboBox.addItem(new SintaFilterItem("S5", "Minimal Sinta 5 (S5)"));
+        sintaComboBox.addItem(new SintaFilterItem("S6", "Minimal Sinta 6 (S6)"));
+        sintaComboBox.setPreferredSize(new Dimension(210, 32));
+        sintaComboBox.setFont(AcademicTheme.uiFont(Font.PLAIN, 12.5f));
         sintaComboBox.setToolTipText("Filter batas minimal peringkat akreditasi jurnal");
 
-        // Baris pencarian gaya "Find articles": tiga kolom input berlabel di atasnya,
-        // tanpa kotak biru pembungkus, tombol Cari biru, dan tautan Pencarian Lanjutan
-        crawlBtn.setText("ðŸ” Cari");
-        crawlBtn.setFont(crawlBtn.getFont().deriveFont(Font.BOLD, 12f));
-        crawlBtn.setBackground(SEARCH_BTN_BLUE);
-        crawlBtn.setForeground(Color.WHITE);
-        crawlBtn.setPreferredSize(new Dimension(95, 30));
+        // Tombol Cari & Pencarian Lanjutan
+        crawlBtn.setText("Cari");
+        crawlBtn.setIcon(AcademicIcons.search(Color.WHITE, 14));
+        AcademicTheme.stylePrimaryButton(crawlBtn);
+        crawlBtn.setPreferredSize(new Dimension(96, 36));
 
         advancedSearchPanel = createAdvancedSearchPanel();
         advancedSearchPanel.setVisible(false);
-        advancedSearchButton = new JButton("Pencarian Lanjutan â–¾");
-        advancedSearchButton.putClientProperty("JButton.buttonType", "toolBarButton");
+        advancedSearchButton = new JButton("Pencarian Lanjutan", AcademicIcons.tune(AcademicTheme.ON_SURFACE_VARIANT, 14));
+        AcademicTheme.styleSecondaryButton(advancedSearchButton);
+        advancedSearchButton.setMargin(new Insets(0, 14, 0, 14));
+        Dimension advPref = advancedSearchButton.getPreferredSize();
+        advancedSearchButton.setPreferredSize(new Dimension(advPref.width + 6, 36));
+        advancedSearchButton.setMinimumSize(new Dimension(advPref.width + 6, 36));
         advancedSearchButton.addActionListener(e -> toggleAdvancedSearch(advancedSearchButton));
 
-        // Esc menutup baris filter lanjutan (no-op saat memang sudah tertutup)
+        // Esc menutup baris filter lanjutan
         advancedSearchPanel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
                 .put(KeyStroke.getKeyStroke("ESCAPE"), "tutupPencarianLanjutan");
         advancedSearchPanel.getActionMap().put("tutupPencarianLanjutan", new AbstractAction() {
@@ -245,17 +251,33 @@ public class GoCrawlGui extends JFrame {
             }
         });
 
-        searchControls = createSearchBar(advancedSearchButton);
+        // Shortcut global: Ctrl+K fokus pencarian, Ctrl+1 pindah ke Hasil Pencarian
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_K, InputEvent.CTRL_DOWN_MASK), "focusSearch");
+        getRootPane().getActionMap().put("focusSearch", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent evt) {
+                if (!headerToolbar.isVisible()) {
+                    showSearchResults();
+                }
+                keywordField.requestFocusInWindow();
+                keywordField.selectAll();
+            }
+        });
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_1, InputEvent.CTRL_DOWN_MASK), "goSearchResults");
+        getRootPane().getActionMap().put("goSearchResults", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent evt) {
+                showSearchResults();
+            }
+        });
 
-        // Wrapper FlowLayout kanan: baris pencarian digeser mentok ke tepi kanan jendela
-        JPanel searchArea = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        searchArea.setOpaque(false);
-        searchArea.add(searchControls);
-        headerToolbar.add(searchArea, BorderLayout.CENTER);
+        searchControls = createSearchBar(advancedSearchButton);
+        headerToolbar.add(searchControls, BorderLayout.CENTER);
 
 
         // 3. Tata Letak Bersih 2-Panel (Tabel Artikel di Kiri/Tengah & Detail Inspector di Kanan)
         inspectorPanel = new DetailInspectorPanel(catalog);
+        inspectorPanel.setOnClose(() -> showArticleInInspector(null));
         // Inspector disembunyikan di awal; muncul hanya saat artikel dipilih di tabel
         inspectorPanel.setVisible(false);
         tablePanel = new ArticleTablePanel(catalog, this::showArticleInInspector);
@@ -264,6 +286,10 @@ public class GoCrawlGui extends JFrame {
         tablePanel.setOnRemoveFromCollection(this::removeFromActiveCollection);
         tablePanel.setOnPageChange(searchController::loadPage);
         tablePanel.setOnPageSizeChange(searchController::setPageSize);
+        tablePanel.setOnSampleKeywordSelected(kw -> {
+            keywordField.setText(kw);
+            keywordField.requestFocusInWindow();
+        });
 
         // Sidebar dan area konten diposisikan langsung di contentLayer (tanpa appSplit):
         // saat baris filter lanjutan terbuka, hanya area konten tengah yang turun â€”
@@ -277,11 +303,9 @@ public class GoCrawlGui extends JFrame {
         contentLayer = new JLayeredPane();
         contentLayer.setLayout(null);
         contentLayer.add(headerToolbar, JLayeredPane.DEFAULT_LAYER);
-        // Sidebar di layer lebih tinggi dari headerToolbar: keduanya overlap di 66px
-        // teratas saat sidebar pentok ke atas, dan nav-nya harus terlihat di atasnya
+        // Sidebar di layer lebih tinggi dari headerToolbar: keduanya overlap di tepi kiri
         contentLayer.add(sidebar, JLayeredPane.PALETTE_LAYER);
         contentLayer.add(mainSplit, JLayeredPane.DEFAULT_LAYER);
-        contentLayer.add(advancedSearchPanel, JLayeredPane.DEFAULT_LAYER);
         contentLayer.addComponentListener(new ComponentAdapter() {
             @Override public void componentResized(ComponentEvent e) {
                 layoutContentLayer();
@@ -290,16 +314,16 @@ public class GoCrawlGui extends JFrame {
         add(contentLayer, BorderLayout.CENTER);
         SwingUtilities.invokeLater(this::layoutContentLayer);
 
-        // Tombol toggle sidebar mengambang di bilah judul abu-abu, tepat di sebelah
-        // kiri tombol jendela (â€” â–¡ âœ•). Posisinya dihitung di layoutContentLayer()
-        sidebarToggleBtn = new JButton(createSidebarToggleIcon());
+        // Tombol toggle sidebar mengambang di bilah judul terang, tepat di sebelah
+        // kiri tombol jendela (— □ ×). Posisinya dihitung di layoutContentLayer()
+        sidebarToggleBtn = new JButton(AcademicIcons.panelLeft(AcademicTheme.ON_SURFACE_VARIANT, 15));
         flatIconButton(sidebarToggleBtn, "Tampilkan / sembunyikan sidebar");
-        sidebarToggleBtn.setForeground(Color.WHITE);
+        sidebarToggleBtn.setForeground(AcademicTheme.ON_SURFACE_VARIANT);
         sidebarToggleBtn.addActionListener(e -> toggleSidebar());
         getLayeredPane().add(sidebarToggleBtn, JLayeredPane.POPUP_LAYER);
 
         // Pesan Awal
-        tablePanel.setProgress(false, "Ketikkan kata kunci pencarian lalu tekan Enter atau klik 'Mulai Crawl'.");
+        tablePanel.setProgress(false, "Ketikkan kata kunci pencarian lalu tekan Enter atau klik 'Cari'.");
 
         // Event Handlers
         crawlBtn.addActionListener(e -> handleCrawlToggle());
@@ -308,40 +332,56 @@ public class GoCrawlGui extends JFrame {
 
     private JPanel createSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout(0, 14));
-        sidebar.setBorder(new EmptyBorder(16, 14, 14, 12));
+        sidebar.setBorder(new CompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 0, 1, AcademicTheme.BORDER_SUBTLE),
+                new EmptyBorder(14, 10, 14, 10)
+        ));
         sidebar.setPreferredSize(new Dimension(SIDEBAR_WIDTH, 500));
-        sidebar.setBackground(new Color(248, 249, 252));
+        sidebar.setBackground(AcademicTheme.SURFACE_LOW);
 
         JPanel nav = new JPanel();
         nav.setOpaque(false);
         nav.setLayout(new BoxLayout(nav, BoxLayout.Y_AXIS));
-        navSearchRow = createNavRow("ðŸ”   Hasil Pencarian", () -> showSearchResults());
-        navFavoritesRow = createNavRow("â˜…   Favorit", () -> openFavorites());
+
+        navSearchLabel = new JLabel("Hasil Pencarian");
+        navSearchRow = createNavRow(navSearchLabel, null, () -> showSearchResults());
+
+        navFavoritesCount = new PillLabel("0");
+        navFavoritesCount.setFont(AcademicTheme.uiFont(Font.BOLD, 10.5f));
+        navFavoritesCount.setBorder(new EmptyBorder(2, 8, 2, 8));
+        navFavoritesLabel = new JLabel("Favorit");
+        navFavoritesRow = createNavRow(navFavoritesLabel, navFavoritesCount, () -> openFavorites());
+
         nav.add(navSearchRow);
+        nav.add(Box.createVerticalStrut(4));
         nav.add(navFavoritesRow);
         sidebar.add(nav, BorderLayout.NORTH);
 
-        // Seksi "Koleksi" ala panel Projects IDE: header lipat + tombol tambah,
-        // daftar koleksi bisa diklik untuk dijadikan koleksi aktif
-        JPanel koleksiSection = new JPanel(new BorderLayout(0, 2));
+        // Seksi "KOLEKSI": header lipat + tombol tambah, daftar koleksi dengan ikon & hitungan
+        JPanel koleksiSection = new JPanel(new BorderLayout(0, 4));
         koleksiSection.setOpaque(false);
 
         JPanel koleksiHeader = new JPanel(new BorderLayout(2, 0));
         koleksiHeader.setOpaque(false);
-        JButton expandBtn = new JButton(koleksiListExpanded ? "â–¾" : "â–¸");
-        flatIconButton(expandBtn, "Lipat / bentangkan daftar koleksi");
-        expandBtn.addActionListener(e -> {
-            koleksiListExpanded = !koleksiListExpanded;
-            expandBtn.setText(koleksiListExpanded ? "â–¾" : "â–¸");
-            refreshKoleksiList();
+        koleksiHeader.setBorder(new EmptyBorder(4, 8, 2, 2));
+        JLabel koleksiTitle = new JLabel("Koleksi",
+                AcademicIcons.folder(AcademicTheme.ON_SURFACE_VARIANT, 15),
+                SwingConstants.LEFT);
+        koleksiTitle.setIconTextGap(6);
+        koleksiTitle.setFont(AcademicTheme.uiFont(Font.BOLD, 13f));
+        koleksiTitle.setForeground(AcademicTheme.ON_SURFACE);
+        koleksiTitle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        koleksiTitle.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                koleksiListExpanded = !koleksiListExpanded;
+                refreshKoleksiList();
+            }
         });
-        JLabel koleksiTitle = new JLabel("Koleksi");
-        koleksiTitle.setFont(koleksiTitle.getFont().deriveFont(Font.BOLD, 13f));
-        koleksiTitle.setForeground(new Color(60, 60, 60));
         JButton addBtn = new JButton("+");
         flatIconButton(addBtn, "Buat koleksi baru");
+        addBtn.setForeground(AcademicTheme.TEXT_MUTED);
         addBtn.addActionListener(e -> createProjectFolder());
-        koleksiHeader.add(expandBtn, BorderLayout.WEST);
         koleksiHeader.add(koleksiTitle, BorderLayout.CENTER);
         koleksiHeader.add(addBtn, BorderLayout.EAST);
         koleksiSection.add(koleksiHeader, BorderLayout.NORTH);
@@ -372,48 +412,27 @@ public class GoCrawlGui extends JFrame {
         button.setFocusable(false); // cegah border biru fokus setelah diklik
     }
 
-    /** Ikon toggle sidebar sederhana: bingkai kotak + garis pembagi panel kiri. */
-    private Icon createSidebarToggleIcon() {
-        return new Icon() {
-            @Override
-            public int getIconWidth() { return 14; }
-
-            @Override
-            public int getIconHeight() { return 14; }
-
-            @Override
-            public void paintIcon(Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(c.getForeground());
-                g2.drawRoundRect(x, y, 13, 13, 3, 3);
-                g2.drawLine(x + 5, y + 2, x + 5, y + 11);
-                g2.dispose();
-            }
-        };
-    }
-
     /** Menampilkan/menyembunyikan sidebar kiri dan menyesuaikan ulang tata letak. */
     private void toggleSidebar() {
         boolean visible = !sidebar.isVisible();
         sidebar.setVisible(visible);
-        // Kolom kiri header menyempit saat sidebar disembunyikan (konten melebar)
-        int hiddenWidth = sidebarToggleBtn.getPreferredSize().width + 4;
-        brandBox.setPreferredSize(new Dimension(
-                visible ? SIDEBAR_WIDTH + 5 - 14 : hiddenWidth,
-                brandBox.getPreferredSize().height));
+        brandBox.setPreferredSize(new Dimension(visible ? SIDEBAR_WIDTH - 14 : 0, 1));
         headerToolbar.revalidate();
         layoutContentLayer();
-        SwingUtilities.invokeLater(this::updateSearchControlsWidth);
     }
 
-    /** Baris navigasi (Hasil Pencarian / Favorit) yang bisa diklik untuk berganti view. */
-    private JLabel createNavRow(String label, Runnable action) {
-        JLabel row = new JLabel(label);
-        row.setOpaque(true);
-        row.setBorder(new EmptyBorder(10, 9, 10, 6));
+    /** Baris navigasi (Hasil Pencarian / Favorit) dengan sudut membulat & hover. */
+    private RoundedPanel createNavRow(JLabel label, JComponent trailing, Runnable action) {
+        RoundedPanel row = new RoundedPanel(10, AcademicTheme.SURFACE_LOW, AcademicTheme.SURFACE_CONTAINER);
+        row.setLayout(new BorderLayout(8, 0));
+        row.setBorder(new EmptyBorder(8, 10, 8, 10));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
         row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        row.add(label, BorderLayout.CENTER);
+        if (trailing != null) {
+            row.add(trailing, BorderLayout.EAST);
+        }
         row.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -426,15 +445,30 @@ public class GoCrawlGui extends JFrame {
     /** Mewarnai baris nav sesuai view yang sedang aktif. */
     private void refreshNavHighlight() {
         if (navSearchRow == null || navFavoritesRow == null) return;
-        applyRowStyle(navSearchRow, activeView == SidebarView.SEARCH_RESULTS);
-        applyRowStyle(navFavoritesRow, activeView == SidebarView.COLLECTION
-                && workspace.activeProject().equals(workspace.favoritesPath()));
+        boolean searchActive = activeView == SidebarView.SEARCH_RESULTS;
+        boolean favActive = activeView == SidebarView.COLLECTION
+                && workspace.activeProject().equals(workspace.favoritesPath());
+
+        applyRowStyle(navSearchRow, navSearchLabel, AcademicIcons.search(
+                searchActive ? Color.WHITE : AcademicTheme.ON_SURFACE_VARIANT, 15), searchActive);
+        applyRowStyle(navFavoritesRow, navFavoritesLabel, AcademicIcons.star(
+                favActive ? Color.WHITE : AcademicTheme.ON_SURFACE_VARIANT, 15), favActive);
+
+        if (navFavoritesCount != null) {
+            int favCount = workspace.articleCount(workspace.favoritesPath());
+            navFavoritesCount.setText(String.valueOf(favCount));
+            navFavoritesCount.setBackground(favActive ? new Color(255, 255, 255, 50) : AcademicTheme.SURFACE_HIGH);
+            navFavoritesCount.setForeground(favActive ? Color.WHITE : AcademicTheme.ON_SURFACE);
+        }
     }
 
-    private void applyRowStyle(JLabel row, boolean active) {
-        row.setFont(row.getFont().deriveFont(active ? Font.BOLD : Font.PLAIN, 12f));
-        row.setBackground(active ? new Color(228, 235, 251) : new Color(248, 249, 252));
-        row.setForeground(active ? new Color(48, 78, 158) : new Color(60, 60, 60));
+    private void applyRowStyle(RoundedPanel row, JLabel label, Icon icon, boolean active) {
+        row.setActive(active);
+        row.setBackground(active ? AcademicTheme.PRIMARY : AcademicTheme.SURFACE_LOW);
+        label.setIcon(icon);
+        label.setIconTextGap(8);
+        label.setFont(AcademicTheme.uiFont(active ? Font.BOLD : Font.PLAIN, 13f));
+        label.setForeground(active ? Color.WHITE : AcademicTheme.ON_SURFACE_VARIANT);
     }
 
     /** Menyusun ulang daftar koleksi (folder di projects/) dengan koleksi aktif disorot. */
@@ -443,12 +477,11 @@ public class GoCrawlGui extends JFrame {
         koleksiListPanel.removeAll();
         if (koleksiListExpanded) {
             List<Path> collections = workspace.sidebarCollections();
-            Path defaultWorkspace = workspace.defaultWorkspace();
-            if (collections.size() == 1 && collections.contains(defaultWorkspace)) {
+            if (collections.isEmpty()) {
                 JLabel empty = new JLabel("Belum ada koleksi");
-                empty.setFont(empty.getFont().deriveFont(Font.ITALIC, 11f));
-                empty.setForeground(new Color(150, 150, 150));
-                empty.setBorder(new EmptyBorder(4, 26, 4, 4));
+                empty.setFont(AcademicTheme.uiFont(Font.ITALIC, 11.5f));
+                empty.setForeground(AcademicTheme.TEXT_MUTED);
+                empty.setBorder(new EmptyBorder(4, 10, 4, 4));
                 empty.setAlignmentX(Component.LEFT_ALIGNMENT);
                 koleksiListPanel.add(empty);
             }
@@ -461,21 +494,31 @@ public class GoCrawlGui extends JFrame {
     }
 
     /** Baris koleksi: klik = muat artikel koleksi, klik kanan = hapus. */
-    private JLabel createKoleksiRow(Path path, boolean active) {
+    private JPanel createKoleksiRow(Path path, boolean active) {
         int count = workspace.articleCount(path);
-        JLabel row = new JLabel(workspace.displayName(path) + "  (" + count + ")");
-        row.setFont(row.getFont().deriveFont(active ? Font.BOLD : Font.PLAIN, 12f));
-        row.setOpaque(true);
-        row.setBorder(new EmptyBorder(6, 26, 6, 6));
+        RoundedPanel row = new RoundedPanel(8, AcademicTheme.SURFACE_LOW, AcademicTheme.SURFACE_CONTAINER);
+        row.setLayout(new BorderLayout(8, 0));
+        row.setActive(active);
+        row.setBorder(new EmptyBorder(6, 10, 6, 10));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
         row.setToolTipText(path.toString());
         row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        if (active) {
-            row.setBackground(new Color(228, 235, 251));
-            row.setForeground(new Color(48, 78, 158));
-        } else {
-            row.setBackground(new Color(248, 249, 252));
-            row.setForeground(new Color(60, 60, 60));
-        }
+        row.setBackground(active ? AcademicTheme.PRIMARY : AcademicTheme.SURFACE_LOW);
+
+        JLabel nameLabel = new JLabel(workspace.displayName(path),
+                AcademicIcons.folder(active ? Color.WHITE : AcademicTheme.TEXT_MUTED, 15),
+                SwingConstants.LEFT);
+        nameLabel.setIconTextGap(8);
+        nameLabel.setFont(AcademicTheme.uiFont(active ? Font.BOLD : Font.PLAIN, 13f));
+        nameLabel.setForeground(active ? Color.WHITE : AcademicTheme.ON_SURFACE_VARIANT);
+
+        JLabel countLbl = new JLabel(String.valueOf(count));
+        countLbl.setFont(AcademicTheme.monoFont(Font.PLAIN, 11.5f));
+        countLbl.setForeground(active ? Color.WHITE : AcademicTheme.TEXT_MUTED);
+
+        row.add(nameLabel, BorderLayout.CENTER);
+        row.add(countLbl, BorderLayout.EAST);
         row.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -553,88 +596,137 @@ public class GoCrawlGui extends JFrame {
         }
     }
 
-    /** Bar pencarian gaya "Find articles": tiga kolom berlabel + tombol Cari + tautan lanjutan. */
+    /** Search Card terpadu: baris 1 (Kata kunci + Cari + Pencarian Lanjutan), baris 2 (Jurnal + Penulis), dan drawer lanjutan. */
     private JPanel createSearchBar(JButton advancedSearchButton) {
-        JPanel bar = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
-        c.gridy = 0;
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.insets = new Insets(0, 0, 0, 10);
+        AcademicTheme.styleInput(keywordField, "Cari artikel dengan kata kunci... (contoh: machine learning, hukum adat)");
+        keywordField.setPreferredSize(new Dimension(260, 36));
+        keywordField.putClientProperty("JTextField.showClearButton", true);
 
-        c.weightx = 0.36;
-        bar.add(createLabeledSearchField("Cari artikel dengan kata kunci", keywordField), c);
-        c.weightx = 0.36;
-        bar.add(createLabeledSearchField("Dalam judul jurnal atau buku", advancedJournalField), c);
-        c.weightx = 0.18;
-        bar.add(createLabeledSearchField("Penulis", advancedAuthorField), c);
+        AcademicTheme.styleInput(advancedJournalField, "Dalam judul jurnal atau buku...");
+        advancedJournalField.setPreferredSize(new Dimension(200, 34));
+        advancedJournalField.putClientProperty("JTextField.leadingIcon", AcademicIcons.book(AcademicTheme.TEXT_MUTED, 15));
 
-        c.weightx = 0;
-        c.fill = GridBagConstraints.NONE;
-        // Rata bawah sel agar tombol sejajar (level) dengan baris field, bukan center
-        // terhadap label + field
-        c.anchor = GridBagConstraints.SOUTH;
-        c.insets = new Insets(0, 0, 0, 4);
-        bar.add(crawlBtn, c);
-        bar.add(advancedSearchButton, c);
-        return bar;
+        AcademicTheme.styleInput(advancedAuthorField, "Nama penulis (contoh: B. Suhartono, Widyaningsih)...");
+        advancedAuthorField.setPreferredSize(new Dimension(200, 34));
+        advancedAuthorField.putClientProperty("JTextField.leadingIcon", AcademicIcons.person(AcademicTheme.TEXT_MUTED, 15));
+
+        JPanel card = new JPanel();
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setBackground(AcademicTheme.CARD_BG);
+        card.setBorder(AcademicTheme.cardBorder(12));
+
+        JPanel row1 = new JPanel(new BorderLayout(8, 0));
+        row1.setOpaque(false);
+        row1.add(keywordField, BorderLayout.CENTER);
+        JPanel row1Btns = new JPanel();
+        row1Btns.setOpaque(false);
+        row1Btns.setLayout(new BoxLayout(row1Btns, BoxLayout.X_AXIS));
+        row1Btns.add(crawlBtn);
+        row1Btns.add(Box.createHorizontalStrut(8));
+        row1Btns.add(advancedSearchButton);
+        row1.add(row1Btns, BorderLayout.EAST);
+
+        JPanel row2 = new JPanel(new GridLayout(1, 2, 10, 0));
+        row2.setOpaque(false);
+        row2.add(advancedJournalField);
+        row2.add(advancedAuthorField);
+
+        card.add(row1);
+        card.add(Box.createVerticalStrut(8));
+        card.add(row2);
+        card.add(advancedSearchPanel);
+        return card;
     }
 
-    /** Pasangan label kecil di atas komponen input (meniru gaya ScienceDirect). */
+    /** Pasangan label kecil di atas komponen input. */
     private JPanel createLabeledSearchField(String label, JComponent field) {
-        JPanel box = new JPanel(new BorderLayout(0, 2));
+        JPanel box = new JPanel(new BorderLayout(0, 4));
         box.setOpaque(false);
         JLabel heading = new JLabel(label);
-        heading.setFont(heading.getFont().deriveFont(Font.PLAIN, 11f));
-        heading.setForeground(new Color(75, 75, 75));
-        // Label direntangkan selebar field (BorderLayout.NORTH) dengan teks rata kiri,
-        // sehingga selalu nempel tepat di tepi kiri field-nya
+        heading.setFont(AcademicTheme.uiFont(Font.BOLD, 10.5f));
+        heading.setForeground(AcademicTheme.TEXT_MUTED);
         heading.setHorizontalAlignment(JLabel.LEFT);
         box.add(heading, BorderLayout.NORTH);
         box.add(field, BorderLayout.CENTER);
         return box;
     }
 
-    /** Baris filter lanjutan: satu baris kompak inline di bawah bar pencarian. */
+    /** Drawer filter lanjutan 3 kolom di dalam Search Card (dipisah garis tipis 1px). */
     private JPanel createAdvancedSearchPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
-        panel.setOpaque(false); // tanpa kotak putih pembungkus
+        AcademicTheme.styleInput(advancedAffiliationField, "Semua Universitas / Lembaga...");
+        advancedAffiliationField.setPreferredSize(new Dimension(180, 32));
+        advancedAffiliationField.putClientProperty("JTextField.leadingIcon", AcademicIcons.building(AcademicTheme.TEXT_MUTED, 14));
 
-        advancedAffiliationField.setColumns(24);
-        panel.add(createLabeledSearchField("Afiliasi", advancedAffiliationField));
-        panel.add(createLabeledSearchField("Akreditasi", sintaComboBox));
+        AcademicTheme.styleInput(fromYearField, "2021");
+        fromYearField.setHorizontalAlignment(JTextField.CENTER);
+        fromYearField.setFont(AcademicTheme.monoFont(Font.PLAIN, 12.5f));
+        fromYearField.setPreferredSize(new Dimension(64, 32));
 
-        // Pasangan tahun awal-akhir dibungkus satu grup berlabel "Rentang tahun"
-        JPanel yearRange = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        AcademicTheme.styleInput(toYearField, "2026");
+        toYearField.setHorizontalAlignment(JTextField.CENTER);
+        toYearField.setFont(AcademicTheme.monoFont(Font.PLAIN, 12.5f));
+        toYearField.setPreferredSize(new Dimension(64, 32));
+
+        JPanel wrapper = new JPanel(new BorderLayout(0, 10));
+        wrapper.setOpaque(false);
+        wrapper.setBorder(new EmptyBorder(10, 0, 0, 0));
+
+        JSeparator divider = new JSeparator();
+        divider.setForeground(AcademicTheme.BORDER_SUBTLE);
+        wrapper.add(divider, BorderLayout.NORTH);
+
+        JPanel inner = new JPanel(new GridBagLayout());
+        inner.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+
+        gbc.gridx = 0;
+        gbc.weightx = 0.36;
+        gbc.insets = new Insets(0, 0, 0, 12);
+        inner.add(createLabeledSearchField("AFILIASI / INSTITUSI", advancedAffiliationField), gbc);
+
+        gbc.gridx = 1;
+        gbc.weightx = 0.36;
+        gbc.insets = new Insets(0, 0, 0, 12);
+        inner.add(createLabeledSearchField("TINGKAT AKREDITASI", sintaComboBox), gbc);
+
+        JPanel yearRange = new JPanel(new GridBagLayout());
         yearRange.setOpaque(false);
-        yearRange.add(fromYearField);
-        yearRange.add(createInlineLabel("hingga"));
-        yearRange.add(toYearField);
-        panel.add(createLabeledSearchField("Rentang tahun", yearRange));
+        GridBagConstraints yc = new GridBagConstraints();
+        yc.gridy = 0;
+        yc.fill = GridBagConstraints.HORIZONTAL;
+        yc.gridx = 0; yc.weightx = 1.0;
+        yearRange.add(fromYearField, yc);
+        yc.gridx = 1; yc.weightx = 0; yc.insets = new Insets(0, 6, 0, 6);
+        yearRange.add(createInlineLabel("hingga"), yc);
+        yc.gridx = 2; yc.weightx = 1.0; yc.insets = new Insets(0, 0, 0, 0);
+        yearRange.add(toYearField, yc);
 
-        Font searchFont = keywordField.getFont();
-        for (Component component : new Component[]{advancedAffiliationField, sintaComboBox, fromYearField, toYearField}) {
-            component.setFont(searchFont);
-        }
-        return panel;
+        gbc.gridx = 2;
+        gbc.weightx = 0.28;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        inner.add(createLabeledSearchField("RENTANG TAHUN TERBIT", yearRange), gbc);
+
+        wrapper.add(inner, BorderLayout.CENTER);
+        return wrapper;
     }
 
     private JLabel createInlineLabel(String text) {
         JLabel label = new JLabel(text);
-        label.setFont(label.getFont().deriveFont(Font.PLAIN, 11f));
-        label.setForeground(new Color(75, 75, 75));
+        label.setFont(AcademicTheme.monoFont(Font.PLAIN, 11.5f));
+        label.setForeground(AcademicTheme.TEXT_MUTED);
         return label;
     }
 
     private void layoutContentLayer() {
         int headerHeight = headerToolbar.isVisible() ? headerToolbar.getPreferredSize().height : 0;
-        boolean filterOpen = advancedSearchPanel.isVisible();
-        int filterHeight = filterOpen ? advancedSearchPanel.getPreferredSize().height : 0;
-        int contentLeft = sidebar.isVisible() ? SIDEBAR_WIDTH + 5 : 14 + sidebarToggleBtn.getPreferredSize().width + 4;
+        int contentLeft = sidebar.isVisible() ? SIDEBAR_WIDTH : 0;
 
         headerToolbar.setBounds(0, 0, contentLayer.getWidth(), headerHeight);
 
-        // Tombol toggle mengambang di bilah judul: kiri tiga tombol jendela (Â±132px),
-        // dikecilkan dan dipusatkan vertikal agar tidak mentok tepi atas
+        // Tombol toggle mengambang di bilah judul: kiri tiga tombol jendela (±132px)
         if (sidebarToggleBtn != null) {
             int toggleX = Math.max(0, getRootPane().getWidth() - 3 * 44 - 8
                     - sidebarToggleBtn.getPreferredSize().width);
@@ -642,39 +734,14 @@ public class GoCrawlGui extends JFrame {
         }
 
         if (sidebar.isVisible()) {
-            // Sidebar pentok ke atas: dari tepi bilah judul sampai dasar jendela
-            // (baris filter lanjutan hanya ada di kolom konten, tidak menyentuhnya)
             sidebar.setBounds(0, 0, SIDEBAR_WIDTH, contentLayer.getHeight());
         }
 
-        // Baris filter lanjutan mengisi area konten (rata dengan bar pencarian)
-        if (filterOpen) {
-            advancedSearchPanel.setBounds(contentLeft, headerHeight,
-                    Math.max(0, contentLayer.getWidth() - contentLeft),
-                    advancedSearchPanel.getPreferredSize().height);
-        }
-
-        // Konten tengah turun mengikuti baris filter; melebar penuh saat sidebar disembunyikan
-        int contentTop = headerHeight + filterHeight;
-        mainSplit.setBounds(contentLeft, contentTop,
+        mainSplit.setBounds(contentLeft, headerHeight,
                 Math.max(0, contentLayer.getWidth() - contentLeft),
-                Math.max(0, contentLayer.getHeight() - contentTop));
-        if (headerToolbar.isVisible()) {
-            updateSearchControlsWidth();
-        }
-    }
-
-    /** Menghitung lebar bar pencarian: dari tepi kiri wrapper hingga margin kanan header (mentok kanan). */
-    private void updateSearchControlsWidth() {
-        if (searchControls == null || searchControls.getParent() == null || contentLayer == null) return;
-        Container searchArea = searchControls.getParent();
-        Point areaLeft = SwingUtilities.convertPoint(searchArea, 0, 0, contentLayer);
-        int width = Math.max(460, contentLayer.getWidth() - areaLeft.x - 14);
-        Dimension pref = searchControls.getPreferredSize();
-        if (width != pref.width) {
-            searchControls.setPreferredSize(new Dimension(width, pref.height));
-            searchControls.revalidate();
-        }
+                Math.max(0, contentLayer.getHeight() - headerHeight));
+        headerToolbar.revalidate();
+        headerToolbar.repaint();
     }
 
     /** Inspector hanya muncul saat ada artikel yang dipilih di tabel. */
@@ -690,12 +757,11 @@ public class GoCrawlGui extends JFrame {
         }
     }
 
-    /** Toggle baris filter lanjutan: memunculkan/menyembunyikan baris kedua di header. */
+    /** Toggle baris filter lanjutan: memunculkan/menyembunyikan drawer di dalam Search Card. */
     private void toggleAdvancedSearch(JButton anchor) {
         boolean visible = !advancedSearchPanel.isVisible();
         advancedSearchPanel.setVisible(visible);
-        anchor.setText(visible ? "Pencarian Lanjutan â–´" : "Pencarian Lanjutan â–¾");
-        // Tinggi header berubah saat panel muncul/hilang â†’ hitung ulang batas konten
+        // Tinggi header berubah saat panel muncul/hilang → hitung ulang batas konten
         layoutContentLayer();
     }
 
@@ -759,7 +825,7 @@ public class GoCrawlGui extends JFrame {
     }
 
     private void setSearchRunning(boolean running, String status) {
-        crawlBtn.setText(running ? "■ Stop" : "🔍 Cari");
+        crawlBtn.setText(running ? "Stop" : "Cari");
         crawlBtn.setBackground(running ? SEARCH_BTN_RED : SEARCH_BTN_BLUE);
         crawlBtn.setForeground(Color.WHITE);
         tablePanel.setPaginationEnabled(!running);
@@ -936,28 +1002,66 @@ public class GoCrawlGui extends JFrame {
         }
     }
 
-    private static void applyTitleBarTheme() {
-        // TitlePane.background dipakai FlatTitlePane sebagai warna bilah saat aktif,
-        // TAPI hanya efektif bila client property JRootPane.titleBarBackground juga
-        // diset di initUI â€” tanpa itu bilah "unified" mengikuti latar window putih
-        UIManager.put("TitlePane.background", TITLE_BAR_BACKGROUND);
-        UIManager.put("TitlePane.embeddedForeground", Color.WHITE);
-        // Menu File/Katalog yang menempel di bilah judul ikut senada
-        UIManager.put("MenuBar.background", TITLE_BAR_BACKGROUND);
-        UIManager.put("MenuBar.foreground", Color.WHITE);
-        UIManager.put("MenuBar.itemHoverBackground", TITLE_BAR_HOVER);
-        // Tombol tutup memakai aksen merah khas Windows saat di-hover
-        UIManager.put("TitlePane.closeHoverBackground", new Color(232, 17, 35));
-        UIManager.put("TitlePane.closePressedBackground", new Color(249, 56, 66));
-    }
-
     public static void launch() {
         SwingUtilities.invokeLater(() -> {
             try {
                 FlatLightLaf.setup();
-                applyTitleBarTheme();
+                AcademicTheme.applyGlobalDefaults();
             } catch (Exception ignored) {}
             new GoCrawlGui().setVisible(true);
         });
+    }
+
+    /** Panel dengan sudut membulat anti-aliased dan efek hover halus untuk item sidebar. */
+    private static final class RoundedPanel extends JPanel {
+        private final int arc;
+        private final Color hoverBg;
+        private boolean hovered = false;
+        private boolean active = false;
+
+        RoundedPanel(int arc, Color defaultBg, Color hoverBg) {
+            this.arc = arc;
+            this.hoverBg = hoverBg;
+            setOpaque(false);
+            setBackground(defaultBg);
+            addMouseListener(new MouseAdapter() {
+                @Override public void mouseEntered(MouseEvent e) { hovered = true; repaint(); }
+                @Override public void mouseExited(MouseEvent e) { hovered = false; repaint(); }
+            });
+        }
+
+        void setActive(boolean active) {
+            this.active = active;
+            repaint();
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor((!active && hovered) ? hoverBg : getBackground());
+            g2.fillRoundRect(0, 0, getWidth(), getHeight(), arc, arc);
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    /** Label berbentuk pill bundar penuh untuk badge jumlah artikel di sidebar. */
+    private static final class PillLabel extends JLabel {
+        PillLabel(String text) {
+            super(text, SwingConstants.CENTER);
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setColor(getBackground());
+            int h = getHeight();
+            g2.fillRoundRect(0, 0, getWidth(), h, h, h);
+            g2.dispose();
+            super.paintComponent(g);
+        }
     }
 }

@@ -70,9 +70,6 @@ final class WorkspaceController {
         } catch (Exception ignored) {
             // Folder projects/ belum ada atau tidak dapat dibaca.
         }
-        if (!collections.contains(defaultWorkspace)) {
-            collections.add(defaultWorkspace);
-        }
         return collections;
     }
 

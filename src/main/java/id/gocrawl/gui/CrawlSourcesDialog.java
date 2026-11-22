@@ -26,11 +26,11 @@ import java.util.List;
  */
 public class CrawlSourcesDialog extends JDialog {
 
-    private static final Color ACCENT_BLUE = new Color(0, 114, 188);
-    private static final Color ROW_SEPARATOR = new Color(236, 238, 242);
-    private static final Color STATUS_INFO = new Color(110, 110, 110);
-    private static final Color STATUS_OK = new Color(34, 139, 34);
-    private static final Color STATUS_ERROR = new Color(198, 40, 40);
+    private static final Color ACCENT_BLUE = AcademicTheme.PRIMARY;
+    private static final Color ROW_SEPARATOR = AcademicTheme.BORDER_SUBTLE;
+    private static final Color STATUS_INFO = AcademicTheme.TEXT_MUTED;
+    private static final Color STATUS_OK = AcademicTheme.S1_TEXT;
+    private static final Color STATUS_ERROR = AcademicTheme.DANGER;
     private static final int MAX_LIST_HEIGHT = 220;
 
     private final List<CrawlSource> sources;
@@ -62,19 +62,18 @@ public class CrawlSourcesDialog extends JDialog {
 
         // 2. Baris tambah cepat: URL + Uji Koneksi (validasi), lalu Nama + Tambah
         urlField = new JTextField();
-        urlField.putClientProperty("JTextField.placeholderText", "https://portal.ac.id");
+        AcademicTheme.styleInput(urlField, "https://portal.ac.id");
         nameField = new JTextField();
-        nameField.putClientProperty("JTextField.placeholderText", "Nama sumber (kosongkan = otomatis)");
+        AcademicTheme.styleInput(nameField, "Nama sumber (kosongkan = otomatis)");
 
         testBtn = new JButton("Uji Koneksi");
-        testBtn.setFont(testBtn.getFont().deriveFont(11f));
-        testBtn.setMargin(new Insets(2, 10, 2, 10));
+        AcademicTheme.styleOutlineButton(testBtn);
+        testBtn.setFont(AcademicTheme.uiFont(Font.BOLD, 11.5f));
+        testBtn.setMargin(new Insets(4, 12, 4, 12));
         testBtn.addActionListener(e -> testConnection());
 
         JButton addBtn = new JButton("＋ Tambah");
-        addBtn.setBackground(ACCENT_BLUE);
-        addBtn.setForeground(Color.WHITE);
-        addBtn.setFocusable(false);
+        AcademicTheme.stylePrimaryButton(addBtn);
         addBtn.addActionListener(e -> addSourceFromFields());
 
         JPanel addRows = new JPanel(new GridLayout(2, 1, 0, 6));
@@ -119,13 +118,16 @@ public class CrawlSourcesDialog extends JDialog {
         add(listScroll, BorderLayout.CENTER);
 
         JPanel bottom = new JPanel(new BorderLayout());
+        bottom.setOpaque(false);
         JButton saveBtn = new JButton("Simpan");
+        AcademicTheme.stylePrimaryButton(saveBtn);
         saveBtn.addActionListener(e -> {
             persist();
             JOptionPane.showMessageDialog(this, "Daftar sumber tersimpan.",
                     "Kelola Sumber Crawl", JOptionPane.INFORMATION_MESSAGE);
         });
         JButton closeBtn = new JButton("Tutup");
+        AcademicTheme.styleOutlineButton(closeBtn);
         closeBtn.addActionListener(e -> dispose());
         JPanel closeWrap = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         closeWrap.setOpaque(false);

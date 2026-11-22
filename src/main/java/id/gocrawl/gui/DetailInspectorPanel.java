@@ -49,6 +49,7 @@ public class DetailInspectorPanel extends JPanel {
 
     private final JournalCatalog catalog;
     private Article currentArticle;
+    private Runnable onClose;
 
     // Kolom label metadata: dikunci ke lebar label terlebar agar tidak terpotong saat panel sempit
     private final List<JLabel> metaFieldLabels = new ArrayList<>();
@@ -59,37 +60,56 @@ public class DetailInspectorPanel extends JPanel {
         initUI();
     }
 
+    public void setOnClose(Runnable onClose) {
+        this.onClose = onClose;
+    }
+
     private void initUI() {
         setLayout(new BorderLayout(0, 0));
+        setBackground(AcademicTheme.SURFACE);
         // Padding kiri tipis agar konten tidak terkesan terdesak ke kanan
-        setBorder(new EmptyBorder(10, 4, 10, 10));
+        setBorder(new EmptyBorder(4, 4, 10, 14));
         setMinimumSize(new Dimension(320, 400));
         setPreferredSize(new Dimension(380, 650));
 
         // Konten scrollable responsif
         ResponsiveScrollPanel contentPanel = new ResponsiveScrollPanel();
+        contentPanel.setBackground(AcademicTheme.SURFACE);
 
-        // Kartu Judul
-        JPanel titleCard = new JPanel(new BorderLayout());
-        titleCard.setBorder(new CompoundBorder(
-                new LineBorder(new Color(220, 220, 220), 1, true),
-                new EmptyBorder(10, 10, 10, 10)
-        ));
+        // Kartu Judul + tombol tutup (×)
+        JPanel titleCard = new JPanel(new BorderLayout(8, 0));
+        titleCard.setBackground(AcademicTheme.CARD_BG);
+        titleCard.setBorder(AcademicTheme.cardBorder(12));
+
+        JButton closeBtn = new JButton(AcademicIcons.close(AcademicTheme.TEXT_MUTED, 14));
+        closeBtn.setToolTipText("Tutup Inspector");
+        closeBtn.setFocusPainted(false);
+        closeBtn.setContentAreaFilled(false);
+        closeBtn.setBorder(new EmptyBorder(2, 4, 2, 4));
+        closeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        closeBtn.addActionListener(e -> {
+            if (onClose != null) onClose.run();
+        });
+        JPanel closeWrap = new JPanel(new BorderLayout());
+        closeWrap.setOpaque(false);
+        closeWrap.add(closeBtn, BorderLayout.NORTH);
+        titleCard.add(closeWrap, BorderLayout.EAST);
+
         titleArea.setEditable(false);
         titleArea.setLineWrap(true);
         titleArea.setWrapStyleWord(true);
-        titleArea.setFont(titleArea.getFont().deriveFont(Font.BOLD, 14f));
+        titleArea.setBackground(AcademicTheme.CARD_BG);
+        titleArea.setForeground(AcademicTheme.ON_SURFACE);
+        titleArea.setFont(AcademicTheme.uiFont(Font.BOLD, 14.5f));
         titleArea.setText("Pilih sebuah artikel dari tabel untuk melihat rincian metadata.");
         titleCard.add(titleArea, BorderLayout.CENTER);
         contentPanel.add(titleCard);
-        contentPanel.add(Box.createVerticalStrut(12));
+        contentPanel.add(Box.createVerticalStrut(10));
 
         // Form Metadata Terstruktur
         JPanel metaBox = new JPanel(new GridBagLayout());
-        metaBox.setBorder(new CompoundBorder(
-                new LineBorder(new Color(220, 220, 220), 1, true),
-                new EmptyBorder(10, 10, 10, 10)
-        ));
+        metaBox.setBackground(AcademicTheme.CARD_BG);
+        metaBox.setBorder(AcademicTheme.cardBorder(12));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(3, 2, 3, 2);
         gbc.anchor = GridBagConstraints.NORTHWEST;
@@ -97,30 +117,32 @@ public class DetailInspectorPanel extends JPanel {
         // Asal / Penerbit
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Penerbit:"), gbc);
-        originLabel.setFont(originLabel.getFont().deriveFont(Font.BOLD));
-        originLabel.setForeground(new Color(30, 80, 180));
+        originLabel.setFont(AcademicTheme.uiFont(Font.BOLD, 12.5f));
+        originLabel.setForeground(AcademicTheme.PRIMARY_DARK);
         gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(originLabel, gbc);
 
         // Nama Jurnal
         gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Nama Jurnal:"), gbc);
+        journalLabel.setFont(AcademicTheme.uiFont(Font.PLAIN, 12.5f));
+        journalLabel.setForeground(AcademicTheme.ON_SURFACE);
         gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(journalLabel, gbc);
 
         // Core Subject
         gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Core Subject:"), gbc);
-        coreSubjectLabel.setForeground(new Color(30, 80, 160));
-        coreSubjectLabel.setFont(coreSubjectLabel.getFont().deriveFont(Font.BOLD));
+        coreSubjectLabel.setForeground(AcademicTheme.ON_SURFACE);
+        coreSubjectLabel.setFont(AcademicTheme.uiFont(Font.BOLD, 12.5f));
         gbc.gridx = 1; gbc.gridy = 2; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(coreSubjectLabel, gbc);
 
         // Bidang / Subjek
         gbc.gridx = 0; gbc.gridy = 3; gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         metaBox.add(createFieldLabel("Bidang:"), gbc);
-        subjectLabel.setForeground(new Color(60, 120, 60));
-        subjectLabel.setFont(subjectLabel.getFont().deriveFont(Font.BOLD));
+        subjectLabel.setForeground(AcademicTheme.SECONDARY);
+        subjectLabel.setFont(AcademicTheme.uiFont(Font.BOLD, 12.5f));
         gbc.gridx = 1; gbc.gridy = 3; gbc.weightx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
         metaBox.add(subjectLabel, gbc);
 
@@ -191,19 +213,19 @@ public class DetailInspectorPanel extends JPanel {
 
         // Bagian Abstrak
         JPanel abstractCard = new JPanel(new BorderLayout(0, 6));
-        abstractCard.setBorder(new CompoundBorder(
-                new LineBorder(new Color(220, 220, 220), 1, true),
-                new EmptyBorder(10, 10, 10, 10)
-        ));
-        JLabel absTitle = new JLabel("ABSTRAK LENGKAP");
-        absTitle.setFont(absTitle.getFont().deriveFont(Font.BOLD, 11f));
-        absTitle.setForeground(new Color(110, 110, 110));
+        abstractCard.setBackground(AcademicTheme.CARD_BG);
+        abstractCard.setBorder(AcademicTheme.cardBorder(12));
+        JLabel absTitle = new JLabel("Abstrak");
+        absTitle.setFont(AcademicTheme.uiFont(Font.BOLD, 12f));
+        absTitle.setForeground(AcademicTheme.ON_SURFACE);
         abstractCard.add(absTitle, BorderLayout.NORTH);
 
         abstractArea.setEditable(false);
         abstractArea.setLineWrap(true);
         abstractArea.setWrapStyleWord(true);
-        abstractArea.setFont(abstractArea.getFont().deriveFont(12.5f));
+        abstractArea.setBackground(AcademicTheme.CARD_BG);
+        abstractArea.setForeground(AcademicTheme.ON_SURFACE_VARIANT);
+        abstractArea.setFont(AcademicTheme.uiFont(Font.PLAIN, 13f));
         abstractCard.add(abstractArea, BorderLayout.CENTER);
 
         contentPanel.add(abstractCard);
@@ -211,15 +233,20 @@ public class DetailInspectorPanel extends JPanel {
         // Single ScrollPane pembungkus
         JScrollPane scrollPane = new JScrollPane(contentPanel);
         scrollPane.setBorder(null);
+        scrollPane.getViewport().setBackground(AcademicTheme.SURFACE);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
         add(scrollPane, BorderLayout.CENTER);
 
         // 3. Bilah Tombol Aksi Bawah
         JPanel bottomActionPanel = new JPanel(new BorderLayout(0, 4));
+        bottomActionPanel.setOpaque(false);
         bottomActionPanel.setBorder(new EmptyBorder(10, 2, 2, 2));
 
+        AcademicTheme.styleSecondaryButton(openWebBtn);
+        AcademicTheme.stylePrimaryButton(downloadPdfBtn);
         JPanel btnRow = new JPanel(new GridLayout(1, 2, 8, 0));
+        btnRow.setOpaque(false);
         btnRow.add(openWebBtn);
         btnRow.add(downloadPdfBtn);
         bottomActionPanel.add(btnRow, BorderLayout.NORTH);
@@ -251,6 +278,9 @@ public class DetailInspectorPanel extends JPanel {
             coreSubjectLabel.setText("-");
             subjectLabel.setText("-");
             sintaLabel.setText("-");
+            sintaLabel.setOpaque(false);
+            sintaLabel.setBorder(null);
+            sintaLabel.setForeground(AcademicTheme.TEXT_MUTED);
             authorsArea.setText("-");
             yearLabel.setText("-");
             doiLabel.setText("-");
@@ -314,10 +344,16 @@ public class DetailInspectorPanel extends JPanel {
         }
         if (sinta.equals("-") || sinta.isBlank()) {
             sintaLabel.setText("Belum Terakreditasi");
-            sintaLabel.setForeground(Color.GRAY);
+            sintaLabel.setOpaque(false);
+            sintaLabel.setBorder(null);
+            sintaLabel.setForeground(AcademicTheme.TEXT_MUTED);
         } else {
-            sintaLabel.setText(sinta.toUpperCase());
-            sintaLabel.setForeground(new Color(180, 80, 20));
+            String rankUpper = sinta.toUpperCase();
+            Color[] colors = AcademicTheme.sintaBadgeColors(rankUpper);
+            sintaLabel.setText(rankUpper);
+            sintaLabel.setOpaque(false);
+            sintaLabel.setBorder(null);
+            sintaLabel.setForeground(colors[0]);
         }
 
         authorsArea.setText(article.authors() == null || article.authors().isBlank() ? "-" : article.authors().replace(";", "\n• "));
@@ -328,13 +364,15 @@ public class DetailInspectorPanel extends JPanel {
             if (displayDoi.length() > 38) {
                 displayDoi = displayDoi.substring(0, 35) + "...";
             }
-            doiLabel.setText("<html><a href='#' style='color:#0066cc; text-decoration:underline;'>" + escapeHtml(displayDoi) + "</a></html>");
-            doiLabel.setForeground(new Color(0, 102, 204));
+            doiLabel.setFont(AcademicTheme.monoFont(Font.PLAIN, 12f));
+            doiLabel.setText("<html><a href='#' style='color:#2563EB; text-decoration:underline;'>" + escapeHtml(displayDoi) + "</a></html>");
+            doiLabel.setForeground(AcademicTheme.PRIMARY);
             doiLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             doiLabel.setToolTipText("Buka tautan DOI: https://doi.org/" + doi.strip());
         } else {
+            doiLabel.setFont(AcademicTheme.uiFont(Font.PLAIN, 12f));
             doiLabel.setText("Tidak tersedia");
-            doiLabel.setForeground(Color.GRAY);
+            doiLabel.setForeground(AcademicTheme.TEXT_MUTED);
             doiLabel.setCursor(Cursor.getDefaultCursor());
             doiLabel.setToolTipText(null);
         }
@@ -345,13 +383,15 @@ public class DetailInspectorPanel extends JPanel {
             if (shortUrl.length() > 38) {
                 shortUrl = shortUrl.substring(0, 35) + "...";
             }
-            urlLabel.setText("<html><a href='#' style='color:#0066cc; text-decoration:underline;'>" + escapeHtml(shortUrl) + "</a></html>");
-            urlLabel.setForeground(new Color(0, 102, 204));
+            urlLabel.setFont(AcademicTheme.monoFont(Font.PLAIN, 12f));
+            urlLabel.setText("<html><a href='#' style='color:#2563EB; text-decoration:underline;'>" + escapeHtml(shortUrl) + "</a></html>");
+            urlLabel.setForeground(AcademicTheme.PRIMARY);
             urlLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             urlLabel.setToolTipText("Buka di browser: " + url.strip());
         } else {
+            urlLabel.setFont(AcademicTheme.uiFont(Font.PLAIN, 12f));
             urlLabel.setText("-");
-            urlLabel.setForeground(Color.GRAY);
+            urlLabel.setForeground(AcademicTheme.TEXT_MUTED);
             urlLabel.setCursor(Cursor.getDefaultCursor());
             urlLabel.setToolTipText(null);
         }
@@ -455,8 +495,8 @@ public class DetailInspectorPanel extends JPanel {
 
     private JLabel createFieldLabel(String text) {
         JLabel label = new JLabel(text);
-        label.setFont(label.getFont().deriveFont(Font.BOLD, 11f));
-        label.setForeground(new Color(110, 110, 110));
+        label.setFont(AcademicTheme.uiFont(Font.BOLD, 11.5f));
+        label.setForeground(AcademicTheme.TEXT_MUTED);
         metaFieldLabels.add(label);
         metaLabelColumnWidth = Math.max(metaLabelColumnWidth, label.getPreferredSize().width);
         return label;

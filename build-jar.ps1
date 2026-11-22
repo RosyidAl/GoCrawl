@@ -11,6 +11,7 @@ Write-Host "Unpacking libraries..." -ForegroundColor Cyan
 Push-Location target/classes
 jar -xf ../../lib/jsoup-1.18.3.jar
 jar -xf ../../lib/flatlaf-3.8.jar
+Remove-Item -Force -ErrorAction SilentlyContinue module-info.class
 Pop-Location
 
 Write-Host "Packaging gocrawl.jar..." -ForegroundColor Cyan
