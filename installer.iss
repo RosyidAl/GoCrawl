@@ -1,12 +1,12 @@
 [Setup]
 AppName=GoCrawl Desktop
-AppVersion=1.0.0
+AppVersion=1.0.1
 AppPublisher=GoCrawl
 DefaultDirName={localappdata}\Programs\GoCrawl
 DefaultGroupName=GoCrawl Desktop
 PrivilegesRequired=lowest
 OutputDir=dist
-OutputBaseFilename=GoCrawl-Setup-1.0.0
+OutputBaseFilename=GoCrawl-Setup-1.0.1
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

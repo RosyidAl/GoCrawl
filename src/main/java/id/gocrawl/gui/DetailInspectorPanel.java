@@ -84,6 +84,7 @@ public class DetailInspectorPanel extends JPanel {
         JButton closeBtn = new JButton(AcademicIcons.close(AcademicTheme.TEXT_MUTED, 14));
         closeBtn.setToolTipText("Tutup Inspector");
         closeBtn.setFocusPainted(false);
+        closeBtn.setFocusable(false);
         closeBtn.setContentAreaFilled(false);
         closeBtn.setBorder(new EmptyBorder(2, 4, 2, 4));
         closeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));

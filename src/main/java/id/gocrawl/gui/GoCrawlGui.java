@@ -9,7 +9,9 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.LineBorder;
+import javax.swing.text.JTextComponent;
 import java.awt.*;
+import java.awt.event.AWTEventListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -17,6 +19,8 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -82,6 +86,7 @@ public class GoCrawlGui extends JFrame {
     private DetailInspectorPanel inspectorPanel;
     private List<CrawlSource> crawlSources;
     private SearchController searchController;
+    private AWTEventListener focusReleaseMouseListener;
 
     public GoCrawlGui() {
         super("GoCrawl Desktop — Academic Research Engine");
@@ -240,13 +245,15 @@ public class GoCrawlGui extends JFrame {
         advancedSearchButton.setMinimumSize(new Dimension(advPref.width + 6, 36));
         advancedSearchButton.addActionListener(e -> toggleAdvancedSearch(advancedSearchButton));
 
-        // Esc menutup baris filter lanjutan
-        advancedSearchPanel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
-                .put(KeyStroke.getKeyStroke("ESCAPE"), "tutupPencarianLanjutan");
-        advancedSearchPanel.getActionMap().put("tutupPencarianLanjutan", new AbstractAction() {
+        // Esc menutup baris filter lanjutan atau melepas fokus dari kolom input
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
+                .put(KeyStroke.getKeyStroke("ESCAPE"), "handleEscape");
+        getRootPane().getActionMap().put("handleEscape", new AbstractAction() {
             @Override public void actionPerformed(ActionEvent evt) {
                 if (advancedSearchPanel.isVisible()) {
                     toggleAdvancedSearch(advancedSearchButton);
+                } else if (isTextComponentFocusedInWindow()) {
+                    clearInputFocus();
                 }
             }
         });
@@ -277,7 +284,11 @@ public class GoCrawlGui extends JFrame {
 
         // 3. Tata Letak Bersih 2-Panel (Tabel Artikel di Kiri/Tengah & Detail Inspector di Kanan)
         inspectorPanel = new DetailInspectorPanel(catalog);
-        inspectorPanel.setOnClose(() -> showArticleInInspector(null));
+        inspectorPanel.setOnClose(() -> {
+            clearInputFocus();
+            tablePanel.clearSelection();
+            showArticleInInspector(null);
+        });
         // Inspector disembunyikan di awal; muncul hanya saat artikel dipilih di tabel
         inspectorPanel.setVisible(false);
         tablePanel = new ArticleTablePanel(catalog, this::showArticleInInspector);
@@ -290,6 +301,7 @@ public class GoCrawlGui extends JFrame {
             keywordField.setText(kw);
             keywordField.requestFocusInWindow();
         });
+        tablePanel.setOnFilterCleared(this::clearInputFocus);
 
         // Sidebar dan area konten diposisikan langsung di contentLayer (tanpa appSplit):
         // saat baris filter lanjutan terbuka, hanya area konten tengah yang turun â€”
@@ -328,6 +340,89 @@ public class GoCrawlGui extends JFrame {
         // Event Handlers
         crawlBtn.addActionListener(e -> handleCrawlToggle());
         keywordField.addActionListener(e -> handleCrawlToggle());
+
+        installFocusReleaseSupport();
+    }
+
+    private void installFocusReleaseSupport() {
+        contentLayer.setFocusable(true);
+        setFocusTraversalPolicyProvider(true);
+        setFocusTraversalPolicy(new LayoutFocusTraversalPolicy() {
+            @Override
+            public Component getInitialComponent(Window window) {
+                return contentLayer;
+            }
+        });
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                clearInputFocus();
+            }
+        });
+
+        focusReleaseMouseListener = event -> {
+            if (!(event instanceof MouseEvent me) || me.getID() != MouseEvent.MOUSE_PRESSED) {
+                return;
+            }
+            Component source = me.getComponent();
+            if (source == null || SwingUtilities.getWindowAncestor(source) != GoCrawlGui.this) {
+                return;
+            }
+            if (isTextComponentFocusedInWindow() && shouldReleaseTextFocusOnClick(source, me)) {
+                clearInputFocus();
+            }
+        };
+        Toolkit.getDefaultToolkit().addAWTEventListener(focusReleaseMouseListener, AWTEvent.MOUSE_EVENT_MASK);
+    }
+
+    private boolean isTextComponentFocusedInWindow() {
+        Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        return focusOwner instanceof JTextComponent
+                && SwingUtilities.getWindowAncestor(focusOwner) == this;
+    }
+
+    static boolean shouldReleaseTextFocusOnClick(Component source, MouseEvent event) {
+        if (source == null) return false;
+        if (source instanceof JTextComponent
+                || SwingUtilities.getAncestorOfClass(JTextComponent.class, source) != null) {
+            return false;
+        }
+        if (source instanceof JComboBox<?>
+                || SwingUtilities.getAncestorOfClass(JComboBox.class, source) != null) {
+            return false;
+        }
+        if (source instanceof JMenuBar || source instanceof JMenu || source instanceof JMenuItem
+                || source instanceof JPopupMenu
+                || SwingUtilities.getAncestorOfClass(JMenuBar.class, source) != null
+                || SwingUtilities.getAncestorOfClass(JPopupMenu.class, source) != null) {
+            return false;
+        }
+        if (source instanceof JScrollBar
+                || SwingUtilities.getAncestorOfClass(JScrollBar.class, source) != null) {
+            return false;
+        }
+        if (source instanceof JTable tbl && event != null && tbl.rowAtPoint(event.getPoint()) >= 0) {
+            return false;
+        }
+        if (source instanceof AbstractButton btn && btn.isFocusable()) {
+            return false;
+        }
+        return true;
+    }
+
+    void clearInputFocus() {
+        if (contentLayer != null) {
+            contentLayer.requestFocusInWindow();
+        }
+    }
+
+    @Override
+    public void dispose() {
+        if (focusReleaseMouseListener != null) {
+            Toolkit.getDefaultToolkit().removeAWTEventListener(focusReleaseMouseListener);
+            focusReleaseMouseListener = null;
+        }
+        super.dispose();
     }
 
     private JPanel createSidebar() {
@@ -748,9 +843,16 @@ public class GoCrawlGui extends JFrame {
     private void showArticleInInspector(Article article) {
         inspectorPanel.setArticle(article);
         boolean show = article != null;
+        boolean wasVisible = inspectorPanel.isVisible();
+        if (!show) {
+            Component focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+            if (focusOwner != null && SwingUtilities.isDescendingFrom(focusOwner, inspectorPanel)) {
+                clearInputFocus();
+            }
+        }
         inspectorPanel.setVisible(show);
         mainSplit.setDividerSize(show ? 6 : 0);
-        if (show) {
+        if (show && !wasVisible) {
             // JSplitPane memberi seluruh ruang ke tabel saat inspector tidak visible;
             // saat muncul kembali, kembalikan proporsi 68 : 32
             mainSplit.setDividerLocation(0.68);
@@ -760,6 +862,9 @@ public class GoCrawlGui extends JFrame {
     /** Toggle baris filter lanjutan: memunculkan/menyembunyikan drawer di dalam Search Card. */
     private void toggleAdvancedSearch(JButton anchor) {
         boolean visible = !advancedSearchPanel.isVisible();
+        if (!visible) {
+            clearInputFocus();
+        }
         advancedSearchPanel.setVisible(visible);
         // Tinggi header berubah saat panel muncul/hilang → hitung ulang batas konten
         layoutContentLayer();
@@ -807,6 +912,7 @@ public class GoCrawlGui extends JFrame {
         }
 
         SintaFilterItem selectedSinta = (SintaFilterItem) sintaComboBox.getSelectedItem();
+        clearInputFocus();
         activeView = SidebarView.SEARCH_RESULTS;
         headerToolbar.setVisible(true);
         headerToolbar.revalidate();
@@ -876,6 +982,9 @@ public class GoCrawlGui extends JFrame {
     /** Menampilkan kembali hasil pencarian terakhir. */
     private void showSearchResults() {
         cancelRunningSearch();
+        clearInputFocus();
+        tablePanel.clearSelection();
+        showArticleInInspector(null);
         activeView = SidebarView.SEARCH_RESULTS;
         refreshNavHighlight();
         refreshKoleksiList();
@@ -968,6 +1077,9 @@ public class GoCrawlGui extends JFrame {
 
     private void openCollection(Path path) {
         cancelRunningSearch();
+        clearInputFocus();
+        tablePanel.clearSelection();
+        showArticleInInspector(null);
         activeView = SidebarView.COLLECTION;
         setActiveProject(path);
         refreshNavHighlight();

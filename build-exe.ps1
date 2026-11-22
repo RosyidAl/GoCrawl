@@ -27,7 +27,7 @@ jpackage `
     --main-class id.gocrawl.Main `
     --dest $distDir `
     --java-options "-Djavax.net.ssl.trustStoreType=Windows-ROOT" `
-    --app-version "1.0.0" `
+    --app-version "1.0.1" `
     --vendor "GoCrawl"
 
 Write-Host "Copying data folder into dist/GoCrawl..." -ForegroundColor Cyan

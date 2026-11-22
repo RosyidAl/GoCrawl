@@ -45,6 +45,7 @@ public class ArticleTablePanel extends JPanel {
     private final JTable table = new JTable(tableModel);
     private final TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
     private final JTextField filterField = new JTextField(20);
+    private final JButton clearFilterBtn = new JButton();
 
     private final CardLayout stageLayout = new CardLayout();
     private final JPanel stagePanel = new JPanel(stageLayout);
@@ -72,6 +73,8 @@ public class ArticleTablePanel extends JPanel {
     private Consumer<Article> onRequestAddToCollection;
     private Consumer<Article> onRemoveFromCollection;
     private Consumer<String> onSampleKeywordSelected;
+    private Runnable onFilterCleared;
+    private boolean suppressSelectionEvents = false;
     private boolean browseMode = false;
 
     private int currentPage = 1;
@@ -97,11 +100,21 @@ public class ArticleTablePanel extends JPanel {
         filterField.setBackground(AcademicTheme.CARD_BG);
         filterField.setPreferredSize(new Dimension(240, 32));
         filterField.putClientProperty("JTextField.leadingIcon", AcademicIcons.filter(AcademicTheme.TEXT_MUTED, 14));
-        filterField.putClientProperty("JTextField.showClearButton", true);
 
-        JPanel filterBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        clearFilterBtn.setIcon(AcademicIcons.filterX(AcademicTheme.ON_SURFACE_VARIANT, 15));
+        clearFilterBtn.setDisabledIcon(AcademicIcons.filterX(AcademicTheme.BORDER_VARIANT, 15));
+        AcademicTheme.styleOutlineButton(clearFilterBtn);
+        clearFilterBtn.setToolTipText("Buang saringan tabel");
+        clearFilterBtn.setPreferredSize(new Dimension(32, 32));
+        clearFilterBtn.setMargin(new Insets(0, 0, 0, 0));
+        clearFilterBtn.setFocusable(false);
+        clearFilterBtn.setEnabled(false);
+        clearFilterBtn.addActionListener(e -> clearFilter());
+
+        JPanel filterBox = new JPanel(new BorderLayout(6, 0));
         filterBox.setOpaque(false);
-        filterBox.add(filterField);
+        filterBox.add(filterField, BorderLayout.CENTER);
+        filterBox.add(clearFilterBtn, BorderLayout.EAST);
         topPanel.add(filterBox, BorderLayout.WEST);
 
         JButton exportMenuBtn = new JButton("Ekspor", AcademicIcons.download(AcademicTheme.ON_SURFACE_VARIANT, 14));
@@ -208,19 +221,20 @@ public class ArticleTablePanel extends JPanel {
 
         // Row Selection
         table.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                int selectedViewRow = table.getSelectedRow();
-                if (selectedViewRow >= 0) {
-                    int modelRow = table.convertRowIndexToModel(selectedViewRow);
-                    if (modelRow >= 0 && modelRow < allArticles.size()) {
-                        Article a = allArticles.get(modelRow);
-                        if (onArticleSelected != null) {
-                            onArticleSelected.accept(a);
-                        }
+            if (suppressSelectionEvents || e.getValueIsAdjusting()) {
+                return;
+            }
+            int selectedViewRow = table.getSelectedRow();
+            if (selectedViewRow >= 0) {
+                int modelRow = table.convertRowIndexToModel(selectedViewRow);
+                if (modelRow >= 0 && modelRow < allArticles.size()) {
+                    Article a = allArticles.get(modelRow);
+                    if (onArticleSelected != null) {
+                        onArticleSelected.accept(a);
                     }
-                } else if (onArticleSelected != null) {
-                    onArticleSelected.accept(null);
                 }
+            } else if (onArticleSelected != null) {
+                onArticleSelected.accept(null);
             }
         });
 
@@ -488,12 +502,55 @@ public class ArticleTablePanel extends JPanel {
 
     private void applyFilter() {
         String text = filterField.getText().strip();
-        if (text.isEmpty()) {
-            sorter.setRowFilter(null);
-        } else {
-            sorter.setRowFilter(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(text)));
+        suppressSelectionEvents = true;
+        try {
+            table.clearSelection();
+            if (text.isEmpty()) {
+                sorter.setRowFilter(null);
+            } else {
+                sorter.setRowFilter(RowFilter.regexFilter("(?i)" + java.util.regex.Pattern.quote(text)));
+            }
+        } finally {
+            suppressSelectionEvents = false;
         }
+        clearFilterBtn.setEnabled(!filterField.getText().isEmpty());
         updateCountLabel();
+    }
+
+    public void clearSelection() {
+        suppressSelectionEvents = true;
+        try {
+            table.clearSelection();
+        } finally {
+            suppressSelectionEvents = false;
+        }
+    }
+
+    public void clearFilter() {
+        if (!filterField.getText().isEmpty()) {
+            filterField.setText("");
+        } else {
+            applyFilter();
+        }
+        if (onFilterCleared != null) {
+            onFilterCleared.run();
+        }
+    }
+
+    public void setOnFilterCleared(Runnable callback) {
+        this.onFilterCleared = callback;
+    }
+
+    JTextField filterField() {
+        return filterField;
+    }
+
+    JButton clearFilterButton() {
+        return clearFilterBtn;
+    }
+
+    JTable articleTable() {
+        return table;
     }
 
     public synchronized void setArticles(List<Article> articles) {

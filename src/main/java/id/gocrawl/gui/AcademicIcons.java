@@ -45,6 +45,13 @@ public final class AcademicIcons {
                 "M3 6h18", "M7 12h10", "M10 18h4");
     }
 
+    public static Icon filterX(Color color, int size) {
+        return lucide(color, size,
+                "M13.013 3H2l8 9.46V19l4 2v-8.54l0.9-1.055",
+                "m22 3-5 5",
+                "m17 3 5 5");
+    }
+
     public static Icon download(Color color, int size) {
         return lucide(color, size,
                 "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4",
